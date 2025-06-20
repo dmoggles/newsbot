@@ -11,7 +11,11 @@
 - [x] Implement deduplication using URL and headline hashes
 - [x] Add placeholder for future NLP-based deduplication
 - [x] Integrate `new_decoderv1` to resolve Google News URLs
-- [ ] Implement full article scraper with fallback handling
+- [x] Implement full article scraper with fallback handling
+- [x] Add ScrapingStatus enum and detailed error tracking per scraping method
+- [x] Enhance article scraper with aggressive extraction strategies
+- [x] Create utility scripts for Redis management (flush_redis.py, check_redis.py)
+- [x] Create story inspection scripts (list_stories.py, show_story.py)
 - [ ] Implement translation logic (optional/fallback)
 - [ ] Implement summary generator with OpenAI integration
 - [ ] Add logic to retry summarization if over 300 chars
@@ -33,5 +37,6 @@
 
 - [x] Add test cases for storage (save, get, update, exists, list)
 - [x] Add test cases for filtering and deduplication
+- [x] Add test cases for article scraping with enhanced error handling
 - [ ] Add test case for summary generation and fallback
 - [ ] Add test for posting logic and rate limiting

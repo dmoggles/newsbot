@@ -9,6 +9,7 @@ from fetcher_rss import GoogleNewsFetcher
 from filter import StoryFilter
 from deduplicator import StoryDeduplicator
 from url_decoder import URLDecoder
+from article_scraper import ArticleScraper
 from storage import RedisStorage, Story
 
 logger = logging.getLogger(__name__)
@@ -230,6 +231,44 @@ def main() -> None:
         # URL decoding logic moved to helper function
         processed_stories, decode_stats = apply_url_decoding(passed_stories, rejected_stories)
         logger.info(f"URL decoding complete: {decode_stats['stories_decoded']} stories decoded")
+        
+        # Apply article scraping to stories that passed filtering
+        passed_stories_after_decoding = [s for s in processed_stories if s.filter_status == "passed"]
+        
+        if passed_stories_after_decoding:
+            logger.info("Starting article scraping...")
+            
+            # Initialize article scraper with configuration
+            scraper_config = config.get("scraper", {})
+            timeout = scraper_config.get("timeout", 30)
+            max_retries = scraper_config.get("max_retries", 3)
+            delay_between_requests = scraper_config.get("delay_between_requests", 1.0)
+            
+            scraper = ArticleScraper(
+                timeout=timeout,
+                max_retries=max_retries,
+                delay_between_requests=delay_between_requests
+            )
+            
+            # Scrape articles
+            scraped_stories, scraping_stats = scraper.scrape_stories(passed_stories_after_decoding)
+            
+            # Update processed_stories with scraped content
+            # Create a mapping of story_id to scraped story for efficient lookup
+            scraped_story_map = {story.story_id: story for story in scraped_stories}
+            
+            # Update the processed_stories list with scraped content
+            for i, story in enumerate(processed_stories):
+                if story.story_id in scraped_story_map:
+                    processed_stories[i] = scraped_story_map[story.story_id]
+            
+            logger.info(f"Article scraping complete: {scraping_stats['successfully_scraped']} articles scraped, "
+                       f"{scraping_stats['scraping_failures']} failed, {scraping_stats['already_scraped']} already had content")
+            
+            if scraping_stats["scrapers_used"]:
+                logger.info(f"Scrapers used: {scraping_stats['scrapers_used']}")
+        else:
+            logger.info("No stories passed filtering, skipping article scraping")
         
         # Save stories to storage
         if storage:

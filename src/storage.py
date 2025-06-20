@@ -16,6 +16,12 @@ class FilterStatus(str, Enum):
     pending = "pending"
     error = "error"
 
+class ScrapingStatus(str, Enum):
+    success = "success"
+    failed = "failed"
+    skipped = "skipped"
+    pending = "pending"
+
 class Story(BaseModel):
     story_id: str
     title: str
@@ -31,6 +37,9 @@ class Story(BaseModel):
     post_status: Optional[PostStatus] = None
     filter_status: Optional[FilterStatus] = None
     filter_reason: Optional[str] = None
+    scraping_status: Optional[ScrapingStatus] = None
+    scraping_error: Optional[Dict[str, str]] = None  # Dict of scraper_name -> error_message
+    scraper_used: Optional[str] = None  # Which scraper was used (newspaper3k, trafilatura, etc.)
     # Add more fields as needed
 
 class RedisStorage:

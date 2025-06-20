@@ -33,6 +33,14 @@ deduplication:
   semantic_threshold: 0.8
   # Note: Semantic deduplication requires additional NLP libraries and models
 
+scraper:
+  # Timeout for HTTP requests in seconds
+  timeout: 30
+  # Maximum number of retry attempts for failed requests
+  max_retries: 3
+  # Delay between requests in seconds (rate limiting)
+  delay_between_requests: 1.0
+
 summarizer:
   max_length: 300
   retry_count: 2
