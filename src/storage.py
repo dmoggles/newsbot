@@ -30,7 +30,9 @@ class RedisStorage:
     def save_story(self, story: Story) -> None:
         # Serialize each field as JSON for consistency
         data = {k: json.dumps(v) for k, v in story.model_dump().items()}
-        self.client.hset(f"story:{story.story_id}", mapping=data)
+        # Ensure all values are str, as required by redis-py type hints
+        data_str = {k: str(v) for k, v in data.items()}
+        self.client.hset(f"story:{story.story_id}", mapping=data_str)
 
     def get_story(self, story_id: str) -> Optional[Story]:
         result = self.client.hgetall(f"story:{story_id}")
@@ -46,7 +48,7 @@ class RedisStorage:
         self.save_story(story)
 
     def get_all_stories(self) -> List[Story]:
-        keys = self.client.keys("story:*")
+        keys: List[bytes] = self.client.keys("story:*")
         stories: List[Story] = []
         for key in keys:
             story_id = key.decode().split(":", 1)[1]

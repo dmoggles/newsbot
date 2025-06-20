@@ -8,3 +8,7 @@ repos:
     hooks:
       - id: mypy
         exclude: ^tests/  # Exclude the tests folder from mypy pre-commit hook
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-redis
