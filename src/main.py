@@ -304,7 +304,8 @@ def main() -> None:
                         processed_stories[i] = summarized_story_map[story.story_id]
                 
                 logger.info(f"Summarization complete: {summary_stats['summarized']} stories summarized, "
-                           f"{summary_stats['used_openai']} used OpenAI, {summary_stats['used_headline']} used headline fallback, "
+                           f"{summary_stats['used_openai']} used OpenAI, {summary_stats.get('used_condensation', 0)} used condensation, "
+                           f"{summary_stats['used_headline']} used headline fallback, "
                            f"{summary_stats['used_video_prefix']} used video prefix, {summary_stats['failed']} failed")
                 
                 # Apply relevance checking after summarization

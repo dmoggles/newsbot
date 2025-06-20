@@ -76,7 +76,7 @@ class Summarizer:
             logger.debug("No full text available, using headline")
         else:
             # Try OpenAI summarization with retries
-            summary = self._generate_openai_summary(story)
+            summary, _ = self._generate_openai_summary(story)  # Don't store condensation info on story
         
         # Add byline and source link, ensuring total length ≤ max_length
         final_summary = self._format_final_summary(summary, story)
@@ -98,7 +98,7 @@ class Summarizer:
         url_lower = url.lower()
         return any(indicator in url_lower for indicator in video_indicators)
     
-    def _generate_openai_summary(self, story: Story) -> str:
+    def _generate_openai_summary(self, story: Story) -> tuple[str, bool]:
         """
         Generate summary using OpenAI with retries for length violations.
         
@@ -106,10 +106,10 @@ class Summarizer:
             story: Story object with full_text to summarize
             
         Returns:
-            Summary text (may fallback to headline if OpenAI fails)
+            Tuple of (summary_text, used_condensation) - may fallback to headline if OpenAI fails
         """
         if not self.openai_enabled:
-            return story.title
+            return story.title, False
         
         # Calculate available characters for summary content
         # Per PRD: only count byline + source name + summary, not the URL
@@ -123,24 +123,39 @@ class Summarizer:
         source_chars = len(story.source) + 3  # " []" chars for markdown, URL doesn't count
         available_chars = self.max_length - byline_chars - source_chars - 5  # 5 char buffer for safety
         
+        last_valid_summary = None
         for attempt in range(self.retry_count + 1):
             try:
                 summary = self._call_openai_api(story, available_chars, attempt)
                 
                 if summary and len(summary) <= available_chars:
                     logger.debug(f"OpenAI summary generated successfully (attempt {attempt + 1})")
-                    return summary
+                    return summary, False
                 elif summary:
                     logger.warning(f"OpenAI summary too long: {len(summary)} > {available_chars} chars (attempt {attempt + 1})")
+                    last_valid_summary = summary  # Keep the last summary for potential re-summarization
                 else:
                     logger.warning(f"OpenAI returned empty summary (attempt {attempt + 1})")
                     
             except Exception as e:
                 logger.warning(f"OpenAI API call failed (attempt {attempt + 1}): {e}")
         
+        # Final attempt: re-summarize the last valid summary if we have one
+        if last_valid_summary and self.openai_enabled:
+            logger.info("Final attempt: re-summarizing the previous summary to fit character limit")
+            try:
+                condensed_summary = self._call_openai_api_on_summary(last_valid_summary, available_chars)
+                if condensed_summary and len(condensed_summary) <= available_chars:
+                    logger.debug(f"Successfully condensed summary to {len(condensed_summary)} chars")
+                    return condensed_summary, True
+                else:
+                    logger.warning(f"Summary condensation failed or still too long")
+            except Exception as e:
+                logger.warning(f"Summary condensation failed: {e}")
+        
         # All attempts failed, fallback to headline
         logger.warning("All OpenAI attempts failed, falling back to headline")
-        return story.title
+        return story.title, False
     
     def _call_openai_api(self, story: Story, max_chars: int, attempt: int) -> Optional[str]:
         """
@@ -192,6 +207,49 @@ class Summarizer:
             
         except Exception as e:
             logger.error(f"OpenAI API error: {e}")
+            raise
+    
+    def _call_openai_api_on_summary(self, summary: str, max_chars: int) -> Optional[str]:
+        """
+        Make OpenAI API call to condense an existing summary.
+        
+        Args:
+            summary: Previously generated summary to condense
+            max_chars: Maximum characters for condensed summary
+            
+        Returns:
+            Condensed summary text or None if API call fails
+        """
+        system_prompt = (
+            f"You are a text condenser. Take the given summary and make it more concise "
+            f"while keeping all key information. Output must be under {max_chars} characters. "
+            "Be extremely brief and to the point."
+        )
+        
+        user_prompt = f"Condense this summary: {summary}"
+        
+        try:
+            if not self.client:
+                raise Exception("OpenAI client not initialized")
+                
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=min(100, max_chars // 3),  # Very conservative token limit
+                temperature=0.1,  # Very low temperature for focused condensation
+                timeout=30
+            )
+            
+            content = response.choices[0].message.content
+            condensed_summary = content.strip() if content else ""
+            logger.debug(f"OpenAI condensation response ({len(condensed_summary)} chars): {condensed_summary[:100]}...")
+            return condensed_summary
+            
+        except Exception as e:
+            logger.error(f"OpenAI condensation API error: {e}")
             raise
     
     def _format_final_summary(self, summary: str, story: Story) -> str:
@@ -260,12 +318,14 @@ class Summarizer:
             "total_stories": len(stories),
             "summarized": 0,
             "used_openai": 0,
+            "used_condensation": 0,
             "used_headline": 0,
             "used_video_prefix": 0,
             "failed": 0
         }
         
         updated_stories = []
+        condensation_used_stories = set()  # Track which stories used condensation
         
         for i, story in enumerate(stories, 1):
             try:
@@ -277,7 +337,19 @@ class Summarizer:
                 
                 # Generate summary
                 logger.debug(f"Story {i}: Generating summary for {story.story_id}")
-                summary = self.summarize_story(story)
+                
+                # Track condensation usage for this story
+                if self._is_video_content(story.url):
+                    summary = f"Video: {story.title}"
+                    logger.debug("Detected video content, using video prefix")
+                elif not story.full_text or len(story.full_text.strip()) < 50:
+                    summary = story.title
+                    logger.debug("No full text available, using headline")
+                else:
+                    # Try OpenAI summarization with retries
+                    summary, used_condensation = self._generate_openai_summary(story)
+                    if used_condensation:
+                        condensation_used_stories.add(story.story_id)
                 
                 # Update story
                 story.summary = summary
@@ -285,10 +357,13 @@ class Summarizer:
                 
                 # Update stats
                 stats["summarized"] += 1
-                if self.openai_enabled and story.full_text and len(story.full_text.strip()) >= 50 and not self._is_video_content(story.url):
-                    stats["used_openai"] += 1
-                elif self._is_video_content(story.url):
+                if self._is_video_content(story.url):
                     stats["used_video_prefix"] += 1
+                elif self.openai_enabled and story.full_text and len(story.full_text.strip()) >= 50:
+                    if story.story_id in condensation_used_stories:
+                        stats["used_condensation"] += 1
+                    else:
+                        stats["used_openai"] += 1
                 else:
                     stats["used_headline"] += 1
                 
@@ -299,7 +374,8 @@ class Summarizer:
                 stats["failed"] += 1
         
         logger.info(f"Summarization complete: {stats['summarized']} summarized, "
-                   f"{stats['used_openai']} used OpenAI, {stats['used_headline']} used headline, "
-                   f"{stats['used_video_prefix']} used video prefix, {stats['failed']} failed")
+                   f"{stats['used_openai']} used OpenAI, {stats['used_condensation']} used condensation, "
+                   f"{stats['used_headline']} used headline, {stats['used_video_prefix']} used video prefix, "
+                   f"{stats['failed']} failed")
         
         return updated_stories, stats
