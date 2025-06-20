@@ -10,7 +10,7 @@
 - [x] Integrate storage into main workflow with filtering status tracking
 - [x] Implement deduplication using URL and headline hashes
 - [x] Add placeholder for future NLP-based deduplication
-- [ ] Integrate `new_decoderv1` to resolve Google News URLs
+- [x] Integrate `new_decoderv1` to resolve Google News URLs
 - [ ] Implement full article scraper with fallback handling
 - [ ] Implement translation logic (optional/fallback)
 - [ ] Implement summary generator with OpenAI integration

@@ -5,9 +5,10 @@ import sys
 from typing import List
 
 from config_loader import load_config
-from fetcher import GoogleNewsFetcher
+from fetcher_rss import GoogleNewsFetcher
 from filter import StoryFilter
 from deduplicator import StoryDeduplicator
+from url_decoder import URLDecoder
 from storage import RedisStorage, Story
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,66 @@ def setup_logging(level: str) -> None:
         ]
     )
     logger.info(f"Logging configured at {level.upper()} level")
+
+def apply_url_decoding(passed_stories: List[Story], rejected_stories: List[Story]) -> tuple[List[Story], dict]:
+    """
+    Apply URL decoding to stories that passed filtering and need decoding.
+    Returns (all_processed_stories, decode_stats)
+    """
+    if not passed_stories:
+        logger.info("No stories passed filtering, skipping URL decoding")
+        return passed_stories + rejected_stories, {"total_stories": 0, "stories_decoded": 0}
+    
+    logger.info(f"Starting URL decoding for {len(passed_stories)} stories that passed filtering...")
+    
+    url_decoder = URLDecoder()
+    
+    # Separate stories that need decoding from those that don't
+    stories_to_decode = []
+    stories_already_decoded = []
+    
+    for story in passed_stories:
+        # Check if story needs URL decoding
+        if _story_needs_url_decoding(story):
+            stories_to_decode.append(story)
+        else:
+            # Story already has a decoded URL or doesn't need decoding
+            stories_already_decoded.append(story)
+    
+    logger.info(f"URL decoding: {len(stories_to_decode)} stories need decoding, "
+               f"{len(stories_already_decoded)} already have decoded URLs")
+    
+    decode_stats = {"total_stories": len(passed_stories), "stories_decoded": 0}
+    
+    if stories_to_decode:
+        decoded_stories, decoder_stats = url_decoder.decode_stories(stories_to_decode)
+        logger.info(f"URL decoding statistics: {decoder_stats}")
+        decode_stats["stories_decoded"] = decoder_stats.get("successfully_decoded", 0)
+        
+        # Combine decoded stories with already-decoded stories
+        all_passed_stories = decoded_stories + stories_already_decoded
+    else:
+        all_passed_stories = stories_already_decoded
+        logger.info("No stories required URL decoding")
+    
+    # Combine all stories back together (passed + rejected)
+    return all_passed_stories + rejected_stories, decode_stats
+
+def _story_needs_url_decoding(story: Story) -> bool:
+    """Check if a story needs URL decoding."""
+    # Story has Google redirect URL and main URL is not a proper URL
+    if story.google_redirect_url and not story.url.startswith('http'):
+        return True
+    
+    # Story has Google redirect URL and it's the same as main URL (needs decoding)
+    if story.google_redirect_url and story.url == story.google_redirect_url:
+        return True
+    
+    # Main URL is a Google News URL that needs decoding
+    if 'news.google.com' in story.url and ('read/CBM' in story.url or 'articles/CBM' in story.url):
+        return True
+    
+    return False
 
 def main() -> None:
     # Parse command line arguments
@@ -162,6 +223,14 @@ def main() -> None:
         logger.info(f"Filtering complete: All {len(processed_stories)} stories processed")
         logger.info(f"Filter statistics: {filter_stats}")
         
+        # Apply URL decoding to stories that passed filtering
+        passed_stories = [s for s in processed_stories if s.filter_status == "passed"]
+        rejected_stories = [s for s in processed_stories if s.filter_status == "rejected"]
+        
+        # URL decoding logic moved to helper function
+        processed_stories, decode_stats = apply_url_decoding(passed_stories, rejected_stories)
+        logger.info(f"URL decoding complete: {decode_stats['stories_decoded']} stories decoded")
+        
         # Save stories to storage
         if storage:
             logger.info("Saving processed stories to storage...")
@@ -182,15 +251,25 @@ def main() -> None:
                 logger.warning(f"Failed to get storage statistics: {e}")
         
         # Log details about passed and rejected stories
-        passed_stories = [s for s in processed_stories if s.filter_status == "passed"]
-        rejected_stories = [s for s in processed_stories if s.filter_status == "rejected"]
+        final_passed_stories = [s for s in processed_stories if s.filter_status == "passed"]
+        final_rejected_stories = [s for s in processed_stories if s.filter_status == "rejected"]
         
-        logger.info(f"Stories passed: {len(passed_stories)}, rejected: {len(rejected_stories)}")
+        logger.info(f"Final results: {len(final_passed_stories)} stories passed, {len(final_rejected_stories)} rejected")
         
-        for story in passed_stories:
-            logger.debug(f"PASSED: {story.title} [{story.source}] - {story.filter_reason}")
+        # Log details about URL decoding for passed stories
+        if final_passed_stories:
+            decoded_count = sum(1 for s in final_passed_stories if s.google_redirect_url and s.url != s.google_redirect_url)
+            logger.info(f"URL decoding: {decoded_count} stories have decoded URLs")
         
-        for story in rejected_stories:
+        for story in final_passed_stories:
+            if story.google_redirect_url:
+                logger.debug(f"PASSED (DECODED): {story.title} [{story.source}] - {story.filter_reason}")
+                logger.debug(f"  Original: {story.google_redirect_url[:80]}...")
+                logger.debug(f"  Decoded:  {story.url}")
+            else:
+                logger.debug(f"PASSED (DIRECT): {story.title} [{story.source}] - {story.filter_reason}")
+        
+        for story in final_rejected_stories:
             logger.debug(f"REJECTED: {story.title} [{story.source}] - {story.filter_reason}")
             
     except Exception as e:
