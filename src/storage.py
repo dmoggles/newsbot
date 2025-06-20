@@ -64,3 +64,12 @@ class RedisStorage:
             if story:
                 stories.append(story)
         return stories
+
+    def get_story_count(self) -> int:
+        """Get the total number of stories in storage."""
+        return len(self.client.keys("story:*"))
+    
+    def get_stories_by_filter_status(self, filter_status: str) -> List[Story]:
+        """Get all stories with a specific filter status."""
+        all_stories = self.get_all_stories()
+        return [story for story in all_stories if story.filter_status == filter_status]

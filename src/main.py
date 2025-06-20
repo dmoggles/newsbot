@@ -2,8 +2,61 @@
 import logging
 import argparse
 import sys
+from typing import List
+
+from config_loader import load_config
+from fetcher import GoogleNewsFetcher
+from filter import StoryFilter
+from storage import RedisStorage, Story
 
 logger = logging.getLogger(__name__)
+
+def merge_story_with_existing(storage: RedisStorage, story: Story) -> tuple[str, str | None]:
+    """
+    Merge a new story with existing story, preserving advanced fields.
+    Returns ('saved'|'updated'|'error', error_message_or_None)
+    """
+    try:
+        if storage.story_exists(story.story_id):
+            existing = storage.get_story(story.story_id)
+            if existing:
+                # Only update filter fields, preserve advanced fields
+                existing.filter_status = story.filter_status
+                existing.filter_reason = story.filter_reason
+                storage.update_story(existing)
+                logger.debug(f"Merged filter status into existing story: {story.story_id}")
+                return 'updated', None
+            else:
+                logger.warning(f"Story exists but could not be loaded: {story.story_id}")
+                return 'error', f"Story exists but could not be loaded: {story.story_id}"
+        else:
+            storage.save_story(story)
+            logger.debug(f"Saved new story: {story.story_id}")
+            return 'saved', None
+    except Exception as e:
+        error_msg = f"Failed to save story {story.story_id}: {e}"
+        logger.error(error_msg)
+        return 'error', error_msg
+
+def save_stories_to_storage(storage: RedisStorage, processed_stories: List[Story]) -> tuple[int, int, int]:
+    """
+    Save processed stories to storage with merge logic.
+    Returns (saved_count, updated_count, error_count)
+    """
+    saved_count = 0
+    updated_count = 0
+    error_count = 0
+    
+    for story in processed_stories:
+        result, error = merge_story_with_existing(storage, story)
+        if result == 'saved':
+            saved_count += 1
+        elif result == 'updated':
+            updated_count += 1
+        else:  # error
+            error_count += 1
+    
+    return saved_count, updated_count, error_count
 
 def setup_logging(level: str) -> None:
     """Configure logging with the specified level."""
@@ -42,9 +95,8 @@ def main() -> None:
     
     logger.info("News Aggregator starting up...")
     
-    # Example: Load config
+    # Load config
     try:
-        from config_loader import load_config
         config = load_config()
         logger.info("Successfully loaded configuration")
         logger.debug(f"Configuration keys: {list(config.keys())}")
@@ -54,7 +106,6 @@ def main() -> None:
 
     # Integrate GoogleNewsFetcher
     try:
-        from fetcher import GoogleNewsFetcher
         search_string = config.get("search_string", "Chelsea FC")
         lookback_days = config.get("lookback_days", 1)
         language = config.get("language", "en")
@@ -70,7 +121,6 @@ def main() -> None:
             logger.debug(f"Story {i}: {story.title} ({story.url}) [{story.source}]")
         
         # Apply filtering
-        from filter import StoryFilter
         story_filter = StoryFilter(config)
         
         logger.info("Starting story filtering...")
@@ -78,6 +128,38 @@ def main() -> None:
         
         logger.info(f"Filtering complete: All {len(processed_stories)} stories processed")
         logger.info(f"Filter statistics: {filter_stats}")
+        
+        # Initialize storage
+        storage_config = config.get("storage", {})
+        redis_url = storage_config.get("redis_url", "redis://localhost:6379/0")
+        
+        logger.info(f"Initializing storage with Redis URL: {redis_url}")
+        try:
+            storage = RedisStorage(redis_url)
+            logger.info("Storage initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize storage: {e}")
+            logger.warning("Continuing without storage - stories will not be persisted")
+            storage = None
+        
+        # Save stories to storage
+        if storage:
+            logger.info("Saving processed stories to storage...")
+            saved_count, updated_count, error_count = save_stories_to_storage(storage, processed_stories)
+            
+            logger.info(f"Storage complete: {saved_count} new stories saved, "
+                       f"{updated_count} stories updated, {error_count} errors")
+            
+            # Show storage statistics
+            try:
+                total_stories = storage.get_story_count()
+                passed_count = len(storage.get_stories_by_filter_status("passed"))
+                rejected_count = len(storage.get_stories_by_filter_status("rejected"))
+                
+                logger.info(f"Storage statistics: {total_stories} total stories in database "
+                           f"({passed_count} passed, {rejected_count} rejected)")
+            except Exception as e:
+                logger.warning(f"Failed to get storage statistics: {e}")
         
         # Log details about passed and rejected stories
         passed_stories = [s for s in processed_stories if s.filter_status == "passed"]

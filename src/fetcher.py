@@ -1,4 +1,5 @@
 import logging
+import hashlib
 from typing import List
 from datetime import datetime, timedelta
 from GoogleNews import GoogleNews  # Fixed import casing
@@ -35,12 +36,16 @@ class GoogleNewsFetcher:
             stories = []
             for i, item in enumerate(results, 1):
                 try:
-                    story_id = item.get("link", "") or item.get("title", "")  # type: ignore
                     title = item.get("title", "")  # type: ignore
                     url = item.get("link", "")  # type: ignore
                     date = item.get("date", "")  # type: ignore
                     source = item.get("media", "")  # type: ignore
                     byline = item.get("desc", None)  # type: ignore
+                    
+                    # Create a stable story_id based on title and source
+                    # This avoids issues with changing Google redirect URLs
+                    story_content = f"{title}:{source}".encode('utf-8')
+                    story_id = hashlib.md5(story_content).hexdigest()
                     
                     story = Story(
                         story_id=story_id,
@@ -52,7 +57,7 @@ class GoogleNewsFetcher:
                     )
                     stories.append(story)
                     
-                    logger.debug(f"Processed story {i}: '{title}' from {source}")
+                    logger.debug(f"Processed story {i}: '{title}' from {source} (ID: {story_id[:8]}...)")
                     
                 except Exception as e:
                     logger.warning(f"Failed to process story {i}: {e}")
