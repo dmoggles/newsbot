@@ -20,6 +20,34 @@ def format_status(status) -> str:
     return str(status).replace("FilterStatus.", "").replace("ScrapingStatus.", "")
 
 
+def calculate_summary_counted_length(story: Story) -> int:
+    """
+    Calculate the length of the summary that counts toward the 300-character limit.
+    Per PRD: only summary text + byline + source name count, not the URL.
+    """
+    if not story.summary:
+        return 0
+    
+    # Find the URL in markdown format [source](url) and exclude it from count
+    summary = story.summary
+    
+    # Look for markdown link pattern at the end: [source](url)
+    import re
+    markdown_link_pattern = r'\[([^\]]+)\]\([^)]+\)$'
+    match = re.search(markdown_link_pattern, summary)
+    
+    if match:
+        # Extract the source name from the markdown link
+        source_name = match.group(1)
+        # Calculate counted length: everything except the URL part
+        url_start = match.start()
+        summary_without_url = summary[:url_start] + f"[{source_name}]"
+        return len(summary_without_url)
+    else:
+        # No markdown link found, count the full summary
+        return len(summary)
+
+
 def print_stories_table(stories: List[Story]) -> None:
     """Print an ASCII table of stories with their status."""
     if not stories:
@@ -27,8 +55,8 @@ def print_stories_table(stories: List[Story]) -> None:
         return
     
     # Define column headers and widths
-    headers = ["Story ID", "Filter Status", "Scraping Status", "Scraper Used", "Full Text", "Full Text Length"]
-    col_widths = [15, 12, 14, 12, 10, 15]
+    headers = ["Story ID", "Filter Status", "Scraping Status", "Scraper Used", "Full Text", "Full Text Length", "Has Summary", "Summary Length"]
+    col_widths = [15, 12, 14, 12, 10, 15, 11, 14]
     
     # Adjust column widths based on content
     for story in stories:
@@ -51,6 +79,8 @@ def print_stories_table(stories: List[Story]) -> None:
     # Print table rows
     for story in stories:
         full_text_status = "Yes" if story.full_text and len(story.full_text.strip()) > 50 else "No"
+        has_summary = "Yes" if story.summary else "No"
+        summary_length = calculate_summary_counted_length(story)
         
         row = "|"
         row += f" {story.story_id:<{col_widths[0]}} |"
@@ -59,6 +89,8 @@ def print_stories_table(stories: List[Story]) -> None:
         row += f" {(story.scraper_used or 'None'):<{col_widths[3]}} |"
         row += f" {full_text_status:<{col_widths[4]}} |"
         row += f" {len(story.full_text) if story.full_text else 0:<{col_widths[5]}} |"
+        row += f" {has_summary:<{col_widths[6]}} |"
+        row += f" {summary_length:<{col_widths[7]}} |"
         print(row)
     
     print(header_line)
@@ -82,6 +114,14 @@ def print_summary(stories: List[Story]) -> None:
     scraping_pending = sum(1 for s in stories if s.scraping_status == ScrapingStatus.pending)
     scraping_none = sum(1 for s in stories if s.scraping_status is None)
     
+    # Summary statistics
+    has_summary = sum(1 for s in stories if s.summary)
+    no_summary = total - has_summary
+    
+    # Calculate average summary length (for stories that have summaries)
+    summary_lengths = [calculate_summary_counted_length(s) for s in stories if s.summary]
+    avg_summary_length = sum(summary_lengths) / len(summary_lengths) if summary_lengths else 0
+    
     # Scraper usage
     scrapers_used: Dict[str, int] = {}
     for story in stories:
@@ -103,6 +143,14 @@ def print_summary(stories: List[Story]) -> None:
     print(f"  Skipped:  {scraping_skipped}")
     print(f"  Pending:  {scraping_pending}")
     print(f"  None:     {scraping_none}")
+    
+    print("\nSummary Status:")
+    print(f"  Has Summary:  {has_summary}")
+    print(f"  No Summary:   {no_summary}")
+    if summary_lengths:
+        print(f"  Avg Length:   {avg_summary_length:.1f} chars (counted)")
+        print(f"  Min Length:   {min(summary_lengths)} chars")
+        print(f"  Max Length:   {max(summary_lengths)} chars")
     
     if scrapers_used:
         print("\nScrapers Used:")

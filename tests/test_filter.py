@@ -1,5 +1,9 @@
-from src.filter import StoryFilter
-from src.storage import Story
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from filter import StoryFilter
+from storage import Story
 
 class TestStoryFilter:
     """Test cases for the StoryFilter class."""

@@ -84,3 +84,17 @@ class RedisStorage:
         """Get all stories with a specific filter status."""
         all_stories = self.get_all_stories()
         return [story for story in all_stories if story.filter_status == filter_status]
+    
+    def delete_story(self, story_id: str) -> bool:
+        """
+        Delete a story from storage.
+        
+        Args:
+            story_id: ID of the story to delete
+            
+        Returns:
+            True if story was deleted, False if it didn't exist
+        """
+        key = f"story:{story_id}"
+        result = self.client.delete(key)
+        return result > 0

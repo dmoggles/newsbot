@@ -10,6 +10,7 @@ from filter import StoryFilter
 from deduplicator import StoryDeduplicator
 from url_decoder import URLDecoder
 from article_scraper import ArticleScraper
+from summarizer import Summarizer
 from storage import RedisStorage, Story
 
 logger = logging.getLogger(__name__)
@@ -267,9 +268,45 @@ def main() -> None:
             
             if scraping_stats["scrapers_used"]:
                 logger.info(f"Scrapers used: {scraping_stats['scrapers_used']}")
+                
+            # Apply summarization to scraped stories
+            logger.info("Starting story summarization...")
+            
+            # Get summarizer configuration
+            summarizer_config = config.get("summarizer", {})
+            
+            # Get OpenAI configuration (merged from secrets)
+            openai_config = config.get("openai", {})
+            
+            # Merge configs for summarizer
+            full_summarizer_config = {**summarizer_config, **openai_config}
+            
+            # Initialize summarizer
+            summarizer = Summarizer(full_summarizer_config)
+            
+            # Get stories that need summarization (those that passed filtering)
+            stories_to_summarize = [s for s in processed_stories if s.filter_status == "passed"]
+            
+            if stories_to_summarize:
+                # Generate summaries
+                summarized_stories, summary_stats = summarizer.summarize_stories(stories_to_summarize)
+                
+                # Update processed_stories with summarized content
+                # Create a mapping of story_id to summarized story for efficient lookup
+                summarized_story_map = {story.story_id: story for story in summarized_stories}
+                
+                # Update the processed_stories list with summarized content
+                for i, story in enumerate(processed_stories):
+                    if story.story_id in summarized_story_map:
+                        processed_stories[i] = summarized_story_map[story.story_id]
+                
+                logger.info(f"Summarization complete: {summary_stats['summarized']} stories summarized, "
+                           f"{summary_stats['used_openai']} used OpenAI, {summary_stats['used_headline']} used headline fallback, "
+                           f"{summary_stats['used_video_prefix']} used video prefix, {summary_stats['failed']} failed")
+            else:
+                logger.info("No stories need summarization")
         else:
-            logger.info("No stories passed filtering, skipping article scraping")
-        
+            logger.info("No stories passed filtering, skipping article scraping and summarization")
         # Save stories to storage
         if storage:
             logger.info("Saving processed stories to storage...")

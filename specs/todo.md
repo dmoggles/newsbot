@@ -16,9 +16,13 @@
 - [x] Enhance article scraper with aggressive extraction strategies
 - [x] Create utility scripts for Redis management (flush_redis.py, check_redis.py)
 - [x] Create story inspection scripts (list_stories.py, show_story.py)
-- [ ] Implement translation logic (optional/fallback)
-- [ ] Implement summary generator with OpenAI integration
-- [ ] Add logic to retry summarization if over 300 chars
+- [x] Create targeted story flushing script (flush_story.py) for selective testing
+- [x] Implement translation logic (optional/fallback) - SKIPPED per user request
+- [x] Implement summary generator with OpenAI integration
+- [x] Add logic to retry summarization if over 300 chars
+- [x] Integrate summarizer into main pipeline with proper character counting
+- [x] Fix Markdown formatting for source links [source](url)
+- [x] Enhanced list_stories.py with summary columns and character counting
 - [ ] Implement relevance checker for accepted sources
 - [ ] Implement BlueSky poster with post tracking
 - [ ] Enforce rate-limiting logic
@@ -38,5 +42,6 @@
 - [x] Add test cases for storage (save, get, update, exists, list)
 - [x] Add test cases for filtering and deduplication
 - [x] Add test cases for article scraping with enhanced error handling
-- [ ] Add test case for summary generation and fallback
+- [x] Add test case for summary generation and fallback
+- [x] Updated all tests to use proper Markdown formatting
 - [ ] Add test for posting logic and rate limiting
