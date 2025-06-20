@@ -177,3 +177,36 @@ openai:
 - Topic-specific BlueSky accounts.
 - Multi-threaded/concurrent scraping/posting.
 - CLI or web dashboard for story review.
+
+---
+
+## 6. **Story Data Schema**
+
+The canonical story object is represented as a Pydantic model:
+
+```python
+from enum import Enum
+from pydantic import BaseModel
+from typing import Optional
+
+class PostStatus(str, Enum):
+    posted = "posted"
+    failed = "failed"
+    skipped = "skipped"
+    pending = "pending"
+
+class Story(BaseModel):
+    story_id: str
+    title: str
+    url: str
+    date: str
+    source: str
+    byline: Optional[str] = None
+    decoded_url: Optional[str] = None
+    full_text: Optional[str] = None
+    summary: Optional[str] = None
+    post_status: Optional[PostStatus] = None
+    # Add more fields as needed
+```
+
+This schema is used for all persistent storage and API responses.
