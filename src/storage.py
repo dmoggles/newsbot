@@ -10,6 +10,12 @@ class PostStatus(str, Enum):
     skipped = "skipped"
     pending = "pending"
 
+class FilterStatus(str, Enum):
+    passed = "passed"
+    rejected = "rejected"
+    pending = "pending"
+    error = "error"
+
 class Story(BaseModel):
     story_id: str
     title: str
@@ -21,6 +27,8 @@ class Story(BaseModel):
     full_text: Optional[str] = None
     summary: Optional[str] = None
     post_status: Optional[PostStatus] = None
+    filter_status: Optional[FilterStatus] = None
+    filter_reason: Optional[str] = None
     # Add more fields as needed
 
 class RedisStorage:

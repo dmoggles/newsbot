@@ -317,23 +317,40 @@ class TestStoryFilter:
             Story(story_id="4", title="Chelsea news", url="https://randomblog.com/4", date="2025-06-20", source="Random Blog"),
         ]
         
-        filtered_stories, stats = filter_obj.filter_stories(stories)
+        processed_stories, stats = filter_obj.filter_stories(stories)
         
-        assert len(filtered_stories) == 2
+        # All stories should be returned with updated status
+        assert len(processed_stories) == 4
         assert stats["total"] == 4
         assert stats["passed"] == 2
         assert stats["filtered_out"] == 2
         assert stats["source_types"]["confirmed"] == 1
         assert stats["source_types"]["accepted"] == 1
+        
+        # Check individual story statuses
+        passed_stories = [s for s in processed_stories if s.filter_status == "passed"]
+        rejected_stories = [s for s in processed_stories if s.filter_status == "rejected"]
+        
+        assert len(passed_stories) == 2
+        assert len(rejected_stories) == 2
+        
+        # Check that passed stories have reasons
+        for story in passed_stories:
+            assert story.filter_reason is not None
+            assert "Passed all filters" in story.filter_reason
+        
+        # Check that rejected stories have reasons
+        for story in rejected_stories:
+            assert story.filter_reason is not None
     
     def test_filter_stories_empty_list(self):
         """Test filtering an empty list of stories."""
         config = {"filter": {}}
         filter_obj = StoryFilter(config)
         
-        filtered_stories, stats = filter_obj.filter_stories([])
+        processed_stories, stats = filter_obj.filter_stories([])
         
-        assert filtered_stories == []
+        assert processed_stories == []
         assert stats["total"] == 0
         assert stats["passed"] == 0
         assert stats["filtered_out"] == 0

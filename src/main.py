@@ -74,13 +74,22 @@ def main() -> None:
         story_filter = StoryFilter(config)
         
         logger.info("Starting story filtering...")
-        filtered_stories, filter_stats = story_filter.filter_stories(stories)
+        processed_stories, filter_stats = story_filter.filter_stories(stories)
         
-        logger.info(f"Filtering complete: {len(filtered_stories)} stories passed out of {len(stories)} total")
+        logger.info(f"Filtering complete: All {len(processed_stories)} stories processed")
         logger.info(f"Filter statistics: {filter_stats}")
         
-        for i, story in enumerate(filtered_stories, 1):
-            logger.debug(f"Filtered story {i}: {story.title} [{story.source}]")
+        # Log details about passed and rejected stories
+        passed_stories = [s for s in processed_stories if s.filter_status == "passed"]
+        rejected_stories = [s for s in processed_stories if s.filter_status == "rejected"]
+        
+        logger.info(f"Stories passed: {len(passed_stories)}, rejected: {len(rejected_stories)}")
+        
+        for story in passed_stories:
+            logger.debug(f"PASSED: {story.title} [{story.source}] - {story.filter_reason}")
+        
+        for story in rejected_stories:
+            logger.debug(f"REJECTED: {story.title} [{story.source}] - {story.filter_reason}")
             
     except Exception as e:
         logger.error(f"Error during news processing: {e}")

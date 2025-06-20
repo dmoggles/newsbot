@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Any
-from storage import Story
+from storage import Story, FilterStatus
 
 logger = logging.getLogger(__name__)
 
@@ -155,20 +155,19 @@ class StoryFilter:
     
     def filter_stories(self, stories: List[Story]) -> tuple[List[Story], Dict[str, Any]]:
         """
-        Filter a list of stories based on all criteria.
+        Process a list of stories and update their filtering status in place.
         
         Returns:
-            tuple: (filtered_stories, filter_stats)
-                - filtered_stories: List of stories that passed all filters
+            tuple: (all_stories_with_status, filter_stats)
+                - all_stories_with_status: All stories with filter_status and filter_reason updated
                 - filter_stats: Statistics about the filtering process
         """
         if not stories:
             logger.info("No stories to filter")
             return [], {"total": 0, "passed": 0, "filtered_out": 0, "reasons": {}}
         
-        logger.info(f"Starting to filter {len(stories)} stories")
+        logger.info(f"Starting to process {len(stories)} stories for filtering")
         
-        filtered_stories: List[Story] = []
         filter_stats: Dict[str, Any] = {
             "total": len(stories),
             "passed": 0,
@@ -182,7 +181,9 @@ class StoryFilter:
                 should_keep, reason, metadata = self.filter_story(story)
                 
                 if should_keep:
-                    filtered_stories.append(story)
+                    # Story passed all filters
+                    story.filter_status = FilterStatus.passed
+                    story.filter_reason = reason
                     filter_stats["passed"] += 1
                     
                     # Count source types for passed stories
@@ -190,6 +191,9 @@ class StoryFilter:
                     if source_type in filter_stats["source_types"]:
                         filter_stats["source_types"][source_type] += 1
                 else:
+                    # Story was filtered out
+                    story.filter_status = FilterStatus.rejected
+                    story.filter_reason = reason
                     filter_stats["filtered_out"] += 1
                     
                     # Count reasons for filtering out
@@ -199,11 +203,14 @@ class StoryFilter:
                     else:
                         filter_stats["reasons"][reason_key] = 1
                 
-                logger.debug(f"Processed story {i}/{len(stories)}: {story.title[:50]}...")
+                logger.debug(f"Processed story {i}/{len(stories)}: {story.title[:50]}... "
+                           f"[{story.filter_status}]")
                 
             except Exception as e:
                 logger.error(f"Error filtering story {i}: {e}")
                 logger.debug(f"Story data: {story}")
+                story.filter_status = FilterStatus.error
+                story.filter_reason = f"Processing error: {str(e)}"
                 filter_stats["filtered_out"] += 1
                 if "error" in filter_stats["reasons"]:
                     filter_stats["reasons"]["error"] += 1
@@ -218,4 +225,4 @@ class StoryFilter:
         if filter_stats["reasons"]:
             logger.info(f"Filter reasons: {filter_stats['reasons']}")
         
-        return filtered_stories, filter_stats
+        return stories, filter_stats
