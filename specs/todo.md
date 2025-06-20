@@ -18,6 +18,9 @@
 - [ ] Implement BlueSky poster with post tracking
 - [ ] Enforce rate-limiting logic
 - [ ] Add fallback logic for summary and post failures
+- [ ] Implement observability layer using FastAPI with endpoints for:
+- [ ] Summary of all processed news stories
+- [ ] Detailed inspection of individual story processing flow
 
 ## Infrastructure / Deployment
 

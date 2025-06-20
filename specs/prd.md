@@ -96,6 +96,12 @@ The goal of this project is to build a single-threaded, persistent news aggregat
 - If the relevance check fails, discard the story.
 - System should be extensible for future strategies (NER, embeddings, classifier, etc.).
 
+### 4.11 Observability & Monitoring
+- Implement a robust observability layer using FastAPI.
+- Provide an API endpoint to view a summary of all news stories processed (including status, timestamps, and key metadata).
+- Provide an API endpoint to inspect the full processing flow and logs for any individual story (from fetch to post), including errors or filtering reasons.
+- Ensure observability endpoints are secure and performant.
+
 ---
 
 ## 5. **System Components**
