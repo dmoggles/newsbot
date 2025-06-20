@@ -2,8 +2,8 @@
 
 ## Core Development Tasks
 
-- [ ] Set up project structure and Python environment
-- [ ] Implement YAML configuration loader
+- [x] Set up project structure and Python environment
+- [x] Implement YAML configuration loader
 - [ ] Implement persistent Redis-based storage abstraction
 - [ ] Implement Google News fetcher using `GoogleNews` library
 - [ ] Implement source, headline, and URL filters
@@ -25,7 +25,7 @@
 ## Infrastructure / Deployment
 
 - [ ] Set up Redis instance
-- [ ] Create and secure configuration and secrets YAML files
+- [x] Create and secure configuration and secrets YAML files
 - [ ] Add logging and error tracking
 
 ## Testing

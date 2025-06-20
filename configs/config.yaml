@@ -1,0 +1,39 @@
+# NewsBot Configuration Example
+
+fetcher:
+  lookback_days: 1
+  search_string: "Chelsea FC"
+  language: "en"
+
+filter:
+  confirmed_sources:
+    - "BBC News"
+    - "Reuters"
+  accepted_sources:
+    - "The Guardian"
+    - "NY Times"
+  banned_keywords:
+    - "rumor"
+    - "gossip"
+  banned_url_substrings:
+    - "clickbait"
+    - "sponsored"
+
+summarizer:
+  max_length: 300
+  retry_count: 2
+
+rate_limit:
+  post_interval_minutes: 30
+
+relevance_checker:
+  keywords:
+    - "Chelsea"
+    - "football"
+  strategy: "substring"
+
+storage:
+  backend: "redis"
+  redis_url: "redis://localhost:6379/0"
+
+# Secrets (API keys, passwords) go in secrets.yaml
