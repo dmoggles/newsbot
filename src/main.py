@@ -68,9 +68,22 @@ def main() -> None:
         logger.info(f"Successfully fetched {len(stories)} stories")
         for i, story in enumerate(stories, 1):
             logger.debug(f"Story {i}: {story.title} ({story.url}) [{story.source}]")
+        
+        # Apply filtering
+        from filter import StoryFilter
+        story_filter = StoryFilter(config)
+        
+        logger.info("Starting story filtering...")
+        filtered_stories, filter_stats = story_filter.filter_stories(stories)
+        
+        logger.info(f"Filtering complete: {len(filtered_stories)} stories passed out of {len(stories)} total")
+        logger.info(f"Filter statistics: {filter_stats}")
+        
+        for i, story in enumerate(filtered_stories, 1):
+            logger.debug(f"Filtered story {i}: {story.title} [{story.source}]")
             
     except Exception as e:
-        logger.error(f"Error during news fetching: {e}")
+        logger.error(f"Error during news processing: {e}")
         return
     
     logger.info("News Aggregator completed successfully")

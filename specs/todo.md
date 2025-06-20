@@ -6,7 +6,7 @@
 - [x] Implement YAML configuration loader
 - [x] Implement persistent Redis-based storage abstraction (with Pydantic Story model and PostStatus enum)
 - [x] Implement Google News fetcher using `GoogleNews` library
-- [ ] Implement source, headline, and URL filters
+- [x] Implement source, headline, and URL filters
 - [ ] Implement deduplication using URL and headline hashes
 - [ ] Add placeholder for future NLP-based deduplication
 - [ ] Integrate `new_decoderv1` to resolve Google News URLs
@@ -31,6 +31,6 @@
 ## Testing
 
 - [x] Add test cases for storage (save, get, update, exists, list)
-- [ ] Add test cases for filtering and deduplication
+- [x] Add test cases for filtering and deduplication
 - [ ] Add test case for summary generation and fallback
 - [ ] Add test for posting logic and rate limiting

@@ -8,16 +8,23 @@ fetcher:
 filter:
   confirmed_sources:
     - "BBC News"
-    - "Reuters"
+    - "Reuters" 
+    - "Chelsea Football Club"
   accepted_sources:
     - "The Guardian"
     - "NY Times"
-  banned_keywords:
+    - "London Evening Standard"
+    - "The Mirror"
+    - "Football London"
+  banned_headline_keywords:
     - "rumor"
     - "gossip"
-  banned_url_substrings:
+    - "arrest"
+  banned_url_keywords:
     - "clickbait"
     - "sponsored"
+    - "youtube"
+    - "reddit"
 
 summarizer:
   max_length: 300
