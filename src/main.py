@@ -2,7 +2,7 @@
 import logging
 import argparse
 import sys
-from typing import List
+from typing import List, Dict
 
 from config_loader import load_config
 from fetcher_rss import GoogleNewsFetcher
@@ -11,6 +11,7 @@ from deduplicator import StoryDeduplicator
 from url_decoder import URLDecoder
 from article_scraper import ArticleScraper
 from summarizer import Summarizer
+from relevance_checker import RelevanceChecker
 from storage import RedisStorage, Story
 
 logger = logging.getLogger(__name__)
@@ -303,6 +304,44 @@ def main() -> None:
                 logger.info(f"Summarization complete: {summary_stats['summarized']} stories summarized, "
                            f"{summary_stats['used_openai']} used OpenAI, {summary_stats['used_headline']} used headline fallback, "
                            f"{summary_stats['used_video_prefix']} used video prefix, {summary_stats['failed']} failed")
+                
+                # Apply relevance checking after summarization
+                logger.info("Starting relevance checking...")
+                
+                # Initialize relevance checker
+                relevance_checker = RelevanceChecker(config)
+                
+                # Get source types for each story (from filter results)
+                source_types: Dict[str, str] = {}
+                for story in stories_to_summarize:
+                    # Determine source type based on filter metadata
+                    # If the story passed filtering, we need to check its source type
+                    source_type = "accepted"  # Default to accepted
+                    
+                    # Check if story is from confirmed source by re-running source check
+                    story_filter_temp = StoryFilter(config)
+                    is_allowed, detected_source_type = story_filter_temp.is_source_allowed(story.source)
+                    if is_allowed and detected_source_type == "confirmed":
+                        source_type = "confirmed"
+                    
+                    source_types[story.story_id] = source_type
+                
+                # Check relevance
+                relevance_checked_stories, relevance_stats = relevance_checker.check_stories(stories_to_summarize, source_types)
+                
+                # Update processed_stories with relevance information
+                relevance_story_map = {story.story_id: story for story in relevance_checked_stories}
+                
+                for i, story in enumerate(processed_stories):
+                    if story.story_id in relevance_story_map:
+                        processed_stories[i] = relevance_story_map[story.story_id]
+                
+                logger.info(f"Relevance checking complete: {relevance_stats['total']} stories checked, "
+                           f"{relevance_stats['relevant']} relevant, {relevance_stats['not_relevant']} not relevant, "
+                           f"{relevance_stats['confirmed_skipped']} from confirmed sources")
+                
+                if relevance_stats.get("keywords_matched"):
+                    logger.info(f"Keywords matched: {relevance_stats['keywords_matched']}")
             else:
                 logger.info("No stories need summarization")
         else:

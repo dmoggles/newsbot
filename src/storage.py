@@ -22,6 +22,12 @@ class ScrapingStatus(str, Enum):
     skipped = "skipped"
     pending = "pending"
 
+class RelevanceStatus(str, Enum):
+    relevant = "relevant"
+    not_relevant = "not_relevant"
+    pending = "pending"
+    skipped = "skipped"  # For confirmed sources
+
 class Story(BaseModel):
     story_id: str
     title: str
@@ -40,6 +46,8 @@ class Story(BaseModel):
     scraping_status: Optional[ScrapingStatus] = None
     scraping_error: Optional[Dict[str, str]] = None  # Dict of scraper_name -> error_message
     scraper_used: Optional[str] = None  # Which scraper was used (newspaper3k, trafilatura, etc.)
+    relevance_status: Optional[RelevanceStatus] = None
+    relevance_reason: Optional[str] = None
     # Add more fields as needed
 
 class RedisStorage:
