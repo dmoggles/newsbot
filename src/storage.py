@@ -24,6 +24,8 @@ class Story(BaseModel):
     source: str
     byline: Optional[str] = None
     decoded_url: Optional[str] = None
+    google_redirect_url: Optional[str] = None  # Store original Google News redirect URL
+    description: Optional[str] = None  # RSS description/summary
     full_text: Optional[str] = None
     summary: Optional[str] = None
     post_status: Optional[PostStatus] = None
