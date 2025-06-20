@@ -26,7 +26,7 @@
 
 - [ ] Set up Redis instance
 - [x] Create and secure configuration and secrets YAML files
-- [ ] Add logging and error tracking
+- [x] Add logging and error tracking
 
 ## Testing
 

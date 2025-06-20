@@ -195,3 +195,7 @@ cython_debug/
 
 # Ignore secrets file
 secrets.yaml
+
+# Temporary output files
+output.txt
+debug_output.txt
