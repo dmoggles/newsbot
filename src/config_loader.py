@@ -1,6 +1,6 @@
 import yaml  # type: ignore
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Mapping, cast
 
 
 def load_yaml(path: str) -> Dict[str, Any]:
@@ -11,10 +11,14 @@ def load_yaml(path: str) -> Dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def deep_merge(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+def deep_merge(a: Dict[str, Any], b: Mapping[str, Any]) -> Dict[str, Any]:
     for k, v in b.items():
-        if isinstance(v, dict) and k in a and isinstance(a[k], dict):
-            a[k] = deep_merge(a[k], v)
+        if (
+            isinstance(v, dict)
+            and k in a
+            and isinstance(a[k], dict)
+        ):
+            a[k] = deep_merge(cast(Dict[str, Any], a[k]), cast(Mapping[str, Any], v))
         else:
             a[k] = v
     return a
