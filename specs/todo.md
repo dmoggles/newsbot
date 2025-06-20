@@ -5,7 +5,7 @@
 - [x] Set up project structure and Python environment
 - [x] Implement YAML configuration loader
 - [x] Implement persistent Redis-based storage abstraction (with Pydantic Story model and PostStatus enum)
-- [ ] Implement Google News fetcher using `GoogleNews` library
+- [x] Implement Google News fetcher using `GoogleNews` library
 - [ ] Implement source, headline, and URL filters
 - [ ] Implement deduplication using URL and headline hashes
 - [ ] Add placeholder for future NLP-based deduplication
