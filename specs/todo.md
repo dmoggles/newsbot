@@ -9,7 +9,7 @@
 - [x] Implement source, headline, and URL filters
 - [x] Integrate storage into main workflow with filtering status tracking
 - [x] Implement deduplication using URL and headline hashes
-- [ ] Add placeholder for future NLP-based deduplication
+- [x] Add placeholder for future NLP-based deduplication
 - [ ] Integrate `new_decoderv1` to resolve Google News URLs
 - [ ] Implement full article scraper with fallback handling
 - [ ] Implement translation logic (optional/fallback)

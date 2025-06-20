@@ -141,8 +141,14 @@ def main() -> None:
             existing_stories = storage.get_all_stories()
             deduplicator.load_existing_stories(existing_stories)
         
+        # Get deduplication configuration
+        dedup_config = config.get("deduplication", {})
+        enable_semantic = dedup_config.get("enable_semantic", False)
+        
         logger.info("Starting story deduplication...")
-        deduplicated_stories, dedup_stats = deduplicator.deduplicate_stories(stories)
+        if enable_semantic:
+            logger.info("Semantic deduplication is enabled (experimental)")
+        deduplicated_stories, dedup_stats = deduplicator.deduplicate_stories(stories, enable_semantic=enable_semantic)
         
         logger.info(f"Deduplication complete: {len(stories)} -> {len(deduplicated_stories)} stories")
         logger.info(f"Deduplication statistics: {dedup_stats}")

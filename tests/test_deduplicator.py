@@ -294,3 +294,70 @@ class TestStoryDeduplicator:
         assert stats['duplicates_by_headline'] == 1
         assert stats['duplicates_by_url'] == 1
         assert stats['unique_output'] == 2
+    
+    def test_semantic_deduplication_placeholder(self):
+        """Test that semantic deduplication placeholders work correctly."""
+        deduplicator = StoryDeduplicator()
+        
+        # Create two stories that might be semantically similar
+        story1 = Story(
+            story_id="story1",
+            title="Chelsea FC wins championship",
+            url="https://example.com/article1",
+            date="2025-06-20",
+            source="BBC Sport"
+        )
+        story2 = Story(
+            story_id="story2", 
+            title="Chelsea claims title victory",  # Semantically similar but different words
+            url="https://example.com/article2",
+            date="2025-06-20",
+            source="Sky Sports"
+        )
+        
+        # Test semantic similarity calculation (placeholder)
+        similarity = deduplicator._calculate_semantic_similarity(story1, story2)
+        assert similarity == 0.0  # Placeholder always returns 0.0
+        
+        # Test semantic duplicate detection (placeholder)
+        is_duplicate, reason = deduplicator._is_semantically_duplicate(story1, [story2])
+        if not is_duplicate:
+            assert reason == "semantic_deduplication_not_implemented"
+        else:
+            assert False, "Expected semantic deduplication to not be implemented"
+        
+    
+    def test_semantic_deduplication_integration(self):
+        """Test that semantic deduplication can be enabled but doesn't affect results yet."""
+        deduplicator = StoryDeduplicator()
+        
+        # No existing stories
+        deduplicator.load_existing_stories([])
+        
+        # Stories that might be semantically similar
+        stories = [
+            Story(
+                story_id="story1",
+                title="Chelsea FC wins championship",
+                url="https://example.com/article1",
+                date="2025-06-20",
+                source="BBC Sport"
+            ),
+            Story(
+                story_id="story2",
+                title="Chelsea claims title victory",  # Semantically similar
+                url="https://example.com/article2", 
+                date="2025-06-20",
+                source="Sky Sports"
+            )
+        ]
+        
+        # Test with semantic deduplication disabled (default)
+        unique_stories, stats = deduplicator.deduplicate_stories(stories, enable_semantic=False)
+        assert len(unique_stories) == 2  # Both stories should remain
+        assert stats['duplicates_by_semantic'] == 0
+        
+        # Test with semantic deduplication enabled (placeholder)
+        unique_stories, stats = deduplicator.deduplicate_stories(stories, enable_semantic=True)
+        assert len(unique_stories) == 2  # Both stories should still remain (placeholder doesn't remove any)
+        assert stats['duplicates_by_semantic'] == 0  # Placeholder doesn't detect semantic duplicates

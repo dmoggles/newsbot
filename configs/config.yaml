@@ -26,6 +26,13 @@ filter:
     - "youtube"
     - "reddit"
 
+deduplication:
+  # Enable semantic deduplication using NLP (experimental, not yet implemented)
+  enable_semantic: false
+  # Similarity threshold for semantic deduplication (0.0-1.0)
+  semantic_threshold: 0.8
+  # Note: Semantic deduplication requires additional NLP libraries and models
+
 summarizer:
   max_length: 300
   retry_count: 2

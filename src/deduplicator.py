@@ -104,10 +104,16 @@ class StoryDeduplicator:
                    f"{len(self.headline_hashes)} headline hashes, "
                    f"{len(self.existing_story_ids)} story IDs")
     
-    def deduplicate_stories(self, stories: List[Story]) -> Tuple[List[Story], Dict[str, int]]:
+    def deduplicate_stories(self, stories: List[Story], enable_semantic: bool = False) -> Tuple[List[Story], Dict[str, int]]:
         """
         Remove duplicate stories from the list.
-        Returns (unique_stories, dedup_stats)
+        
+        Args:
+            stories: List of stories to deduplicate
+            enable_semantic: Enable semantic deduplication (placeholder for future implementation)
+            
+        Returns:
+            (unique_stories, dedup_stats)
         """
         logger.info(f"Starting deduplication of {len(stories)} stories")
         
@@ -117,6 +123,7 @@ class StoryDeduplicator:
             'duplicates_by_story_id': 0,
             'duplicates_by_url': 0,
             'duplicates_by_headline': 0,
+            'duplicates_by_semantic': 0,  # Placeholder for future implementation
             'unique_output': 0
         }
         
@@ -155,6 +162,18 @@ class StoryDeduplicator:
                 else:
                     batch_headline_hashes.add(headline_hash)
             
+            # Check for semantic duplicates (placeholder for future implementation)
+            if not is_duplicate and enable_semantic:
+                # TODO: Implement semantic deduplication
+                # This would compare the current story against existing stories using NLP
+                # Example implementation:
+                # is_semantic_dup, semantic_reason = self._is_semantically_duplicate(story, existing_stories)
+                # if is_semantic_dup:
+                #     is_duplicate = True
+                #     duplicate_reason = "semantic"
+                #     dedup_stats['duplicates_by_semantic'] += 1
+                logger.debug(f"Semantic deduplication skipped (not implemented): {story.title[:50]}...")
+            
             if is_duplicate:
                 logger.debug(f"DUPLICATE ({duplicate_reason}): {story.title[:50]}... [{story.source}]")
             else:
@@ -168,6 +187,64 @@ class StoryDeduplicator:
                    f"{dedup_stats['unique_output']} unique stories remaining")
         logger.info(f"Removed duplicates: {dedup_stats['duplicates_by_story_id']} by story_id, "
                    f"{dedup_stats['duplicates_by_url']} by URL, "
-                   f"{dedup_stats['duplicates_by_headline']} by headline")
+                   f"{dedup_stats['duplicates_by_headline']} by headline, "
+                   f"{dedup_stats['duplicates_by_semantic']} by semantic")
+        
+        if enable_semantic:
+            logger.info("Semantic deduplication was enabled but not implemented yet")
         
         return unique_stories, dedup_stats
+    
+    def _calculate_semantic_similarity(self, story1: Story, story2: Story) -> float:
+        """
+        Calculate semantic similarity between two stories using NLP.
+        
+        PLACEHOLDER: This method is intended for future implementation of 
+        advanced semantic deduplication using techniques like:
+        - Sentence embeddings (e.g., BERT, SentenceTransformers)
+        - TF-IDF cosine similarity
+        - Named entity overlap
+        - Topic modeling
+        
+        Args:
+            story1: First story to compare
+            story2: Second story to compare
+            
+        Returns:
+            Similarity score between 0.0 and 1.0 (1.0 = identical)
+            
+        TODO: Implement semantic similarity calculation using:
+        1. Pre-trained sentence embedding models
+        2. Text preprocessing (stemming, stop word removal)
+        3. Configurable similarity threshold
+        4. Performance optimization for batch processing
+        """
+        # Placeholder implementation - always returns 0.0 (no similarity)
+        logger.debug(f"Semantic similarity calculation not implemented - comparing "
+                    f"'{story1.title[:30]}...' vs '{story2.title[:30]}...'")
+        return 0.0
+    
+    def _is_semantically_duplicate(self, story: Story, existing_stories: List[Story], 
+                                 threshold: float = 0.8) -> Tuple[bool, str]:
+        """
+        Check if a story is semantically similar to any existing stories.
+        
+        PLACEHOLDER: This method is intended for future implementation of
+        semantic deduplication that can catch stories with:
+        - Different headlines but same content
+        - Paraphrased versions of the same news
+        - Stories from different angles about the same event
+        
+        Args:
+            story: Story to check for semantic duplicates
+            existing_stories: List of existing stories to compare against
+            threshold: Similarity threshold above which stories are considered duplicates
+            
+        Returns:
+            Tuple of (is_duplicate, reason_string)
+            
+        TODO: Implement using sentence embeddings and similarity metrics
+        """
+        # Placeholder implementation - always returns False
+        logger.debug(f"Semantic deduplication not implemented for story: '{story.title[:50]}...'")
+        return False, "semantic_deduplication_not_implemented"
