@@ -48,6 +48,8 @@ class Story(BaseModel):
     scraper_used: Optional[str] = None  # Which scraper was used (newspaper3k, trafilatura, etc.)
     relevance_status: Optional[RelevanceStatus] = None
     relevance_reason: Optional[str] = None
+    post_reason: Optional[str] = None  # Reason for post status (success message, error, etc.)
+    posted_at: Optional[str] = None  # ISO timestamp when successfully posted
     # Add more fields as needed
 
 class RedisStorage:
@@ -106,3 +108,56 @@ class RedisStorage:
         key = f"story:{story_id}"
         result = self.client.delete(key)
         return result > 0
+    
+    def get_last_successful_post_time(self) -> Optional[str]:
+        """
+        Get the timestamp of the most recent successful post.
+        
+        Returns:
+            ISO timestamp string of the last successful post, or None if no posts found
+        """
+        all_stories = self.get_all_stories()
+        posted_stories = [
+            story for story in all_stories 
+            if story.post_status == PostStatus.posted and story.posted_at
+        ]
+        
+        if not posted_stories:
+            return None
+        
+        # Sort by posted_at timestamp and return the most recent
+        posted_stories.sort(key=lambda s: s.posted_at or "", reverse=True)
+        return posted_stories[0].posted_at
+    
+    def get_postable_stories(self) -> List[Story]:
+        """
+        Get stories that are ready to be posted (have summaries, passed relevance checks, not yet posted).
+        
+        Returns:
+            List of stories that can be posted
+        """
+        all_stories = self.get_all_stories()
+        postable = []
+        
+        for story in all_stories:
+            # Must have a summary
+            if not story.summary:
+                continue
+            
+            # Must not already be posted
+            if story.post_status == PostStatus.posted:
+                continue
+            
+            # Must have passed filtering
+            if story.filter_status != FilterStatus.passed:
+                continue
+            
+            # If relevance check was performed, must be relevant
+            if (hasattr(story, 'relevance_status') and 
+                story.relevance_status and 
+                story.relevance_status != RelevanceStatus.relevant):
+                continue
+            
+            postable.append(story)
+        
+        return postable

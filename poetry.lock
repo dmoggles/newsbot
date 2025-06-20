@@ -87,6 +87,25 @@ html5lib = ["html5lib"]
 lxml = ["lxml"]
 
 [[package]]
+name = "blueskysocial"
+version = "1.8.0"
+description = "API for BlueSky social network"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "blueskysocial-1.8.0-py3-none-any.whl", hash = "sha256:ec6f23e189f62b46dae731ca15c2e237f31f3362ac307dd73551107728f05611"},
+    {file = "blueskysocial-1.8.0.tar.gz", hash = "sha256:46b86cb4ba7880b6be3227686e68960cad1defb9efbf51753350d0f100e9cc42"},
+]
+
+[package.dependencies]
+BeautifulSoup4 = "*"
+requests = "*"
+
+[package.extras]
+dev = ["black", "joblib", "pre-commit", "pylint", "pytest"]
+
+[[package]]
 name = "certifi"
 version = "2025.6.15"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -2338,4 +2357,4 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10"
-content-hash = "aa5b0640cfcfe7c4d3dc7a5a6d0c5c2944056fa12731a89f239f2bc5efc14abe"
+content-hash = "6b770084a84c6254f45e7cb3c037a8a8a14d65f05185dc50a82832dd947fa4d5"

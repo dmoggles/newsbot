@@ -12,10 +12,6 @@ filter:
     - "Chelsea Football Club"
   accepted_sources:
     - "The Guardian"
-    - "NY Times"
-    - "London Evening Standard"
-    - "The Mirror"
-    - "Football London"
   banned_headline_keywords:
     - "rumor"
     - "gossip"

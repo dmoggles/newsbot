@@ -5,19 +5,20 @@ Script to display an ASCII table of all stories in the system with their filteri
 
 import sys
 import os
-from typing import List, Dict
+import argparse
+from typing import List, Dict, Optional, Union
 
 # Add src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from storage import RedisStorage, Story, FilterStatus, ScrapingStatus
+from storage import RedisStorage, Story, FilterStatus, ScrapingStatus, PostStatus
 
 
-def format_status(status) -> str:
+def format_status(status: Optional[Union[FilterStatus, ScrapingStatus, PostStatus]]) -> str:
     """Format status for display, handling both enum and string values."""
     if status is None:
         return "None"
-    return str(status).replace("FilterStatus.", "").replace("ScrapingStatus.", "")
+    return str(status).replace("FilterStatus.", "").replace("ScrapingStatus.", "").replace("PostStatus.", "")
 
 
 def calculate_summary_counted_length(story: Story) -> int:
@@ -55,15 +56,18 @@ def print_stories_table(stories: List[Story]) -> None:
         return
     
     # Define column headers and widths
-    headers = ["Story ID", "Filter Status", "Scraping Status", "Scraper Used", "Full Text", "Full Text Length", "Has Summary", "Summary Length"]
-    col_widths = [15, 12, 14, 12, 10, 15, 11, 14]
+    headers = ["Story ID", "Filter Status", "Scraping Status", "Post Status", "Posted At", "Scraper Used", "Full Text", "Full Text Length", "Has Summary", "Summary Length"]
+    col_widths = [15, 12, 14, 10, 16, 12, 10, 15, 11, 14]
     
     # Adjust column widths based on content
     for story in stories:
         col_widths[0] = max(col_widths[0], len(story.story_id))
         col_widths[1] = max(col_widths[1], len(format_status(story.filter_status)))
         col_widths[2] = max(col_widths[2], len(format_status(story.scraping_status)))
-        col_widths[3] = max(col_widths[3], len(story.scraper_used or "None"))
+        col_widths[3] = max(col_widths[3], len(format_status(story.post_status)))
+        posted_at_str = story.posted_at[:16] if story.posted_at else "None"
+        col_widths[4] = max(col_widths[4], len(posted_at_str))
+        col_widths[5] = max(col_widths[5], len(story.scraper_used or "None"))
         
     
     # Print table header
@@ -81,16 +85,19 @@ def print_stories_table(stories: List[Story]) -> None:
         full_text_status = "Yes" if story.full_text and len(story.full_text.strip()) > 50 else "No"
         has_summary = "Yes" if story.summary else "No"
         summary_length = calculate_summary_counted_length(story)
+        posted_at_str = story.posted_at[:16] if story.posted_at else "None"
         
         row = "|"
         row += f" {story.story_id:<{col_widths[0]}} |"
         row += f" {format_status(story.filter_status):<{col_widths[1]}} |"
         row += f" {format_status(story.scraping_status):<{col_widths[2]}} |"
-        row += f" {(story.scraper_used or 'None'):<{col_widths[3]}} |"
-        row += f" {full_text_status:<{col_widths[4]}} |"
-        row += f" {len(story.full_text) if story.full_text else 0:<{col_widths[5]}} |"
-        row += f" {has_summary:<{col_widths[6]}} |"
-        row += f" {summary_length:<{col_widths[7]}} |"
+        row += f" {format_status(story.post_status):<{col_widths[3]}} |"
+        row += f" {posted_at_str:<{col_widths[4]}} |"
+        row += f" {(story.scraper_used or 'None'):<{col_widths[5]}} |"
+        row += f" {full_text_status:<{col_widths[6]}} |"
+        row += f" {len(story.full_text) if story.full_text else 0:<{col_widths[7]}} |"
+        row += f" {has_summary:<{col_widths[8]}} |"
+        row += f" {summary_length:<{col_widths[9]}} |"
         print(row)
     
     print(header_line)
@@ -113,6 +120,13 @@ def print_summary(stories: List[Story]) -> None:
     scraping_skipped = sum(1 for s in stories if s.scraping_status == ScrapingStatus.skipped)
     scraping_pending = sum(1 for s in stories if s.scraping_status == ScrapingStatus.pending)
     scraping_none = sum(1 for s in stories if s.scraping_status is None)
+    
+    # Post status summary
+    post_posted = sum(1 for s in stories if s.post_status == PostStatus.posted)
+    post_failed = sum(1 for s in stories if s.post_status == PostStatus.failed)
+    post_skipped = sum(1 for s in stories if s.post_status == PostStatus.skipped)
+    post_pending = sum(1 for s in stories if s.post_status == PostStatus.pending)
+    post_none = sum(1 for s in stories if s.post_status is None)
     
     # Summary statistics
     has_summary = sum(1 for s in stories if s.summary)
@@ -144,6 +158,13 @@ def print_summary(stories: List[Story]) -> None:
     print(f"  Pending:  {scraping_pending}")
     print(f"  None:     {scraping_none}")
     
+    print("\nPost Status:")
+    print(f"  Posted:   {post_posted}")
+    print(f"  Failed:   {post_failed}")
+    print(f"  Skipped:  {post_skipped}")
+    print(f"  Pending:  {post_pending}")
+    print(f"  None:     {post_none}")
+    
     print("\nSummary Status:")
     print(f"  Has Summary:  {has_summary}")
     print(f"  No Summary:   {no_summary}")
@@ -158,9 +179,40 @@ def print_summary(stories: List[Story]) -> None:
             print(f"  {scraper}: {count}")
 
 
+def filter_stories_by_status(stories: List[Story], filter_status: Optional[str]) -> List[Story]:
+    """Filter stories by their filter status."""
+    if not filter_status:
+        return stories
+    
+    # Convert string to FilterStatus enum
+    try:
+        status_enum = FilterStatus[filter_status.lower()]
+    except KeyError:
+        print(f"Error: Invalid filter status '{filter_status}'. Valid options are: {', '.join([s.name for s in FilterStatus])}")
+        sys.exit(1)
+    
+    return [story for story in stories if story.filter_status == status_enum]
+
+
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Display an ASCII table of all stories with their filtering and scraping status."
+    )
+    parser.add_argument(
+        "--filter-status",
+        choices=['passed', 'rejected', 'pending', 'error'],
+        help="Only show stories with the specified filter status"
+    )
+    return parser.parse_args()
+
+
 def main():
     """Main function to display stories table."""
     try:
+        # Parse command-line arguments
+        args = parse_arguments()
+        
         # Initialize storage
         print("Connecting to Redis storage...")
         storage = RedisStorage()
@@ -173,10 +225,16 @@ def main():
             print("No stories found in database.")
             return
         
+        # Filter stories by filter status if specified
+        if args.filter_status:
+            original_count = len(stories)
+            stories = filter_stories_by_status(stories, args.filter_status)
+            print(f"Filtered {original_count} stories to {len(stories)} with filter status '{args.filter_status}'")
+        
         # Sort stories by story_id for consistent display
         stories.sort(key=lambda x: x.story_id)
         
-        print(f"Found {len(stories)} stories in database.\n")
+        print(f"Found {len(stories)} stories to display.\n")
         
         # Print the table
         print_stories_table(stories)

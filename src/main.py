@@ -3,6 +3,7 @@ import logging
 import argparse
 import sys
 from typing import List, Dict
+from datetime import datetime
 
 from config_loader import load_config
 from fetcher_rss import GoogleNewsFetcher
@@ -12,6 +13,7 @@ from url_decoder import URLDecoder
 from article_scraper import ArticleScraper
 from summarizer import Summarizer
 from relevance_checker import RelevanceChecker
+from bluesky_poster import BlueSkyPoster
 from storage import RedisStorage, Story
 
 logger = logging.getLogger(__name__)
@@ -346,6 +348,51 @@ def main() -> None:
                 logger.info("No stories need summarization")
         else:
             logger.info("No stories passed filtering, skipping article scraping and summarization")
+        
+        # BlueSky posting
+        if storage:
+            logger.info("Starting BlueSky posting...")
+            
+            # Initialize BlueSky poster
+            bluesky_poster = BlueSkyPoster(config)
+            
+            # Get stories that are ready to be posted from storage
+            postable_stories = storage.get_postable_stories()
+            logger.info(f"Found {len(postable_stories)} stories ready for posting")
+            
+            if postable_stories:
+                # Get the last successful post time from storage
+                last_post_time_str = storage.get_last_successful_post_time()
+                
+                # Convert string timestamp back to datetime if available
+                if last_post_time_str:
+                    try:
+                        last_post_time = datetime.fromisoformat(last_post_time_str.replace('Z', '+00:00'))
+                        bluesky_poster.set_last_post_time(last_post_time)
+                    except Exception as e:
+                        logger.warning(f"Failed to parse last post time {last_post_time_str}: {e}")
+                
+                # Attempt to post stories
+                posting_stats = bluesky_poster.post_stories(postable_stories)
+                
+                logger.info(f"BlueSky posting complete: {posting_stats['total']} stories processed, "
+                           f"{posting_stats['posted']} posted, {posting_stats['failed']} failed, "
+                           f"{posting_stats['skipped']} skipped, {posting_stats['rate_limited']} rate limited")
+                
+                # Update stories in storage with posting results
+                updated_count = 0
+                for story in postable_stories:
+                    if story.post_status:  # Only update if post status was set
+                        storage.update_story(story)
+                        updated_count += 1
+                
+                if updated_count > 0:
+                    logger.info(f"Updated {updated_count} stories with posting results")
+            else:
+                logger.info("No stories ready for posting")
+        else:
+            logger.warning("Storage not available - skipping BlueSky posting")
+        
         # Save stories to storage
         if storage:
             logger.info("Saving processed stories to storage...")

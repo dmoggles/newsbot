@@ -24,7 +24,7 @@
 - [x] Fix Markdown formatting for source links [source](url)
 - [x] Enhanced list_stories.py with summary columns and character counting
 - [x] Implement relevance checker for accepted sources
-- [ ] Implement BlueSky poster with post tracking
+- [x] Implement BlueSky poster with post tracking
 - [ ] Enforce rate-limiting logic
 - [ ] Add fallback logic for summary and post failures
 - [ ] Implement observability layer using FastAPI with endpoints for:
