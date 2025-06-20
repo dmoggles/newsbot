@@ -7,6 +7,7 @@ from typing import List
 from config_loader import load_config
 from fetcher import GoogleNewsFetcher
 from filter import StoryFilter
+from deduplicator import StoryDeduplicator
 from storage import RedisStorage, Story
 
 logger = logging.getLogger(__name__)
@@ -120,16 +121,7 @@ def main() -> None:
         for i, story in enumerate(stories, 1):
             logger.debug(f"Story {i}: {story.title} ({story.url}) [{story.source}]")
         
-        # Apply filtering
-        story_filter = StoryFilter(config)
-        
-        logger.info("Starting story filtering...")
-        processed_stories, filter_stats = story_filter.filter_stories(stories)
-        
-        logger.info(f"Filtering complete: All {len(processed_stories)} stories processed")
-        logger.info(f"Filter statistics: {filter_stats}")
-        
-        # Initialize storage
+        # Initialize storage first (needed for deduplication)
         storage_config = config.get("storage", {})
         redis_url = storage_config.get("redis_url", "redis://localhost:6379/0")
         
@@ -141,6 +133,28 @@ def main() -> None:
             logger.error(f"Failed to initialize storage: {e}")
             logger.warning("Continuing without storage - stories will not be persisted")
             storage = None
+        
+        # Apply deduplication
+        deduplicator = StoryDeduplicator()
+        if storage:
+            # Load existing stories for deduplication
+            existing_stories = storage.get_all_stories()
+            deduplicator.load_existing_stories(existing_stories)
+        
+        logger.info("Starting story deduplication...")
+        deduplicated_stories, dedup_stats = deduplicator.deduplicate_stories(stories)
+        
+        logger.info(f"Deduplication complete: {len(stories)} -> {len(deduplicated_stories)} stories")
+        logger.info(f"Deduplication statistics: {dedup_stats}")
+        
+        # Apply filtering
+        story_filter = StoryFilter(config)
+        
+        logger.info("Starting story filtering...")
+        processed_stories, filter_stats = story_filter.filter_stories(deduplicated_stories)
+        
+        logger.info(f"Filtering complete: All {len(processed_stories)} stories processed")
+        logger.info(f"Filter statistics: {filter_stats}")
         
         # Save stories to storage
         if storage:
