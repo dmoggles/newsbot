@@ -8,7 +8,7 @@ fetcher:
 filter:
   confirmed_sources:
     - "BBC News"
-    - "Reuters" 
+    - "Reuters"
     - "Chelsea Football Club"
   accepted_sources:
     - "The Guardian"
@@ -43,7 +43,7 @@ summarizer:
   retry_count: 5
 
 rate_limit:
-  post_interval_minutes: 0
+  post_interval_minutes: 30
 
 relevance_checker:
   keywords:

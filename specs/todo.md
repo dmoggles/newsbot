@@ -25,7 +25,7 @@
 - [x] Enhanced list_stories.py with summary columns and character counting
 - [x] Implement relevance checker for accepted sources
 - [x] Implement BlueSky poster with post tracking
-- [ ] Enforce rate-limiting logic
+- [x] Enforce rate-limiting logic
 - [ ] Add fallback logic for summary and post failures
 - [ ] Implement observability layer using FastAPI with endpoints for:
 - [ ] Summary of all processed news stories
@@ -44,4 +44,4 @@
 - [x] Add test cases for article scraping with enhanced error handling
 - [x] Add test case for summary generation and fallback
 - [x] Updated all tests to use proper Markdown formatting
-- [ ] Add test for posting logic and rate limiting
+- [x] Add test for posting logic and rate limiting
