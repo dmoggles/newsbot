@@ -132,10 +132,12 @@ class BlueSkyPoster:
                 except Exception as e:
                     self.logger.error("Failed to create web card for URL %s: %s", url, e)
                     post_obj = Post(post_text)
+
             assert self.client is not None, "BlueSky client is not initialized"
             self.client.post(post_obj)
 
-            # Update rate limiting tracker            self.last_successful_post_time = datetime.now()
+            # Update rate limiting tracker
+            self.last_successful_post_time = datetime.now()
 
             self.logger.info("Successfully posted story %s to BlueSky", story.story_id)
             return PostStatus.posted, f"Posted successfully at {self.last_successful_post_time}"
