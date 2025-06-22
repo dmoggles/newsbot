@@ -103,7 +103,7 @@ def print_stories_table(stories: List[Story]) -> None:
     print(header_line)
 
 
-def print_summary(stories: List[Story]) -> None:
+def print_summary(stories: List[Story], storage: RedisStorage) -> None:
     """Print a summary of story statistics."""
     total = len(stories)
     
@@ -177,6 +177,18 @@ def print_summary(stories: List[Story]) -> None:
         print("\nScrapers Used:")
         for scraper, count in sorted(scrapers_used.items()):
             print(f"  {scraper}: {count}")
+    
+    # Last successful post time
+    print("\nPosting Information:")
+    last_post_time = storage.get_last_successful_post_time()
+    if last_post_time:
+        print(f"  Last successful post: {last_post_time}")
+    else:
+        print("  Last successful post: Never")
+    
+    # Show how many stories are ready to be posted
+    postable_stories = storage.get_postable_stories()
+    print(f"  Stories ready to post: {len(postable_stories)}")
 
 
 def filter_stories_by_status(stories: List[Story], filter_status: Optional[str]) -> List[Story]:
@@ -238,9 +250,8 @@ def main():
         
         # Print the table
         print_stories_table(stories)
-        
-        # Print summary
-        print_summary(stories)
+          # Print summary
+        print_summary(stories, storage)
         
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
