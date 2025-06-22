@@ -234,17 +234,20 @@ def run_once() -> None:
 
     # Integrate GoogleNewsFetcher
     try:
-        search_string = config.get("search_string", "Chelsea FC")
-        lookback_days = config.get("lookback_days", 1)
-        language = config.get("language", "en")
+        fetcher_config = config.get("fetcher", {})
+        search_string = fetcher_config.get("search_string", "Chelsea FC")
+        period = fetcher_config.get("period", '1D')
+        language = fetcher_config.get("language", "en")
+        region = fetcher_config.get("region", "uk")
 
         logger.info(
-            "Initializing fetcher with search_string='%s', lookback_days=%s, language='%s'",
+            "Initializing fetcher with search_string='%s', period=%s, language='%s', region='%s'",
             search_string,
-            lookback_days,
+            period,
             language,
+            region
         )
-        fetcher = GoogleNewsFetcher(search_string=search_string, lookback_days=lookback_days, language=language)
+        fetcher = GoogleNewsFetcher(search_string=search_string, period=period, language=language, region=region)
 
         logger.info("Starting news fetch...")
         stories = fetcher.fetch()

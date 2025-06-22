@@ -59,6 +59,8 @@ def print_stories_table(stories: List[Story]) -> None:
     # Define column headers and widths
     headers = [
         "Story ID",
+        "Source",
+        "Headline (30 chars)",
         "Filter Status",
         "Scraping Status",
         "Post Status",
@@ -69,17 +71,20 @@ def print_stories_table(stories: List[Story]) -> None:
         "Has Summary",
         "Summary Length",
     ]
-    col_widths = [15, 12, 14, 10, 16, 12, 10, 15, 11, 14]
+    col_widths = [15, 20, 32, 12, 14, 10, 16, 12, 10, 15, 11, 14]
 
     # Adjust column widths based on content
     for story in stories:
         col_widths[0] = max(col_widths[0], len(story.story_id))
-        col_widths[1] = max(col_widths[1], len(format_status(story.filter_status)))
-        col_widths[2] = max(col_widths[2], len(format_status(story.scraping_status)))
-        col_widths[3] = max(col_widths[3], len(format_status(story.post_status)))
+        col_widths[1] = max(col_widths[1], len(story.source or "None"))
+        headline_preview = (story.title[:30] + "...") if story.title and len(story.title) > 30 else (story.title or "None")
+        col_widths[2] = max(col_widths[2], len(headline_preview))
+        col_widths[3] = max(col_widths[3], len(format_status(story.filter_status)))
+        col_widths[4] = max(col_widths[4], len(format_status(story.scraping_status)))
+        col_widths[5] = max(col_widths[5], len(format_status(story.post_status)))
         posted_at_str = story.posted_at[:16] if story.posted_at else "None"
-        col_widths[4] = max(col_widths[4], len(posted_at_str))
-        col_widths[5] = max(col_widths[5], len(story.scraper_used or "None"))
+        col_widths[6] = max(col_widths[6], len(posted_at_str))
+        col_widths[7] = max(col_widths[7], len(story.scraper_used or "None"))
 
     # Print table header
     header_line = "+" + "+".join("-" * (w + 2) for w in col_widths) + "+"
@@ -97,18 +102,21 @@ def print_stories_table(stories: List[Story]) -> None:
         has_summary = "Yes" if story.summary else "No"
         summary_length = calculate_summary_counted_length(story)
         posted_at_str = story.posted_at[:16] if story.posted_at else "None"
+        headline_preview = (story.title[:30] + "...") if story.title and len(story.title) > 30 else (story.title or "None")
 
         row = "|"
         row += f" {story.story_id:<{col_widths[0]}} |"
-        row += f" {format_status(story.filter_status):<{col_widths[1]}} |"
-        row += f" {format_status(story.scraping_status):<{col_widths[2]}} |"
-        row += f" {format_status(story.post_status):<{col_widths[3]}} |"
-        row += f" {posted_at_str:<{col_widths[4]}} |"
-        row += f" {(story.scraper_used or 'None'):<{col_widths[5]}} |"
-        row += f" {full_text_status:<{col_widths[6]}} |"
-        row += f" {len(story.full_text) if story.full_text else 0:<{col_widths[7]}} |"
-        row += f" {has_summary:<{col_widths[8]}} |"
-        row += f" {summary_length:<{col_widths[9]}} |"
+        row += f" {(story.source or 'None'):<{col_widths[1]}} |"
+        row += f" {headline_preview:<{col_widths[2]}} |"
+        row += f" {format_status(story.filter_status):<{col_widths[3]}} |"
+        row += f" {format_status(story.scraping_status):<{col_widths[4]}} |"
+        row += f" {format_status(story.post_status):<{col_widths[5]}} |"
+        row += f" {posted_at_str:<{col_widths[6]}} |"
+        row += f" {(story.scraper_used or 'None'):<{col_widths[7]}} |"
+        row += f" {full_text_status:<{col_widths[8]}} |"
+        row += f" {len(story.full_text) if story.full_text else 0:<{col_widths[9]}} |"
+        row += f" {has_summary:<{col_widths[10]}} |"
+        row += f" {summary_length:<{col_widths[11]}} |"
         print(row)
 
     print(header_line)

@@ -167,6 +167,11 @@ class BlueSkyPoster:
                 self.logger.info("Skipping story %s - already posted", story.story_id)
                 continue
 
+            if story.post_status == PostStatus.failed:
+                stats["skipped"] += 1
+                self.logger.info("Skipping story %s - already failed", story.story_id)
+                continue
+
             # Skip stories that don't have summaries or are not relevant
             if not story.summary:
                 story.post_status = PostStatus.failed

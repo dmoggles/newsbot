@@ -1,7 +1,6 @@
 import logging
 import hashlib
 from typing import List, Dict, Any
-from datetime import datetime, timedelta
 from GoogleNews import GoogleNews
 from storage import Story
 
@@ -14,12 +13,12 @@ class GoogleNewsFetcher:
     optionally within a specified lookback period, language, and country.
     Attributes:
         search_string (str): The search query to use for fetching news.
-        lookback_days (int): Number of days to look back for news articles.
+        period (str): Lookback period for news articles (default: '1D' for 1 day).
         language (str): Language code for news articles (default: "en").
-        country (str): Country code for news articles (default: "US").
+        region (str): Region code for news articles (default: "UK").
         gn (GoogleNews): Instance of the GoogleNews class for fetching news.
     Methods:
-        __init__(search_string: str, lookback_days: int = 1, language: str = "en", country: str = "US"):
+        __init__(search_string: str, lookback_days: int = 1, language: str = "en", region: str = "UK"):
             Initializes the fetcher with the given search string, lookback period, language, and country.
         _is_google_news_url(url: str) -> bool:
             Checks if a given URL is a Google News redirect URL that may need decoding.
@@ -29,21 +28,21 @@ class GoogleNewsFetcher:
             later decoding in the pipeline.
     """
 
-    def __init__(self, search_string: str, lookback_days: int = 1, language: str = "en", country: str = "US"):
+    def __init__(self, search_string: str, period: str = '1D', language: str = "en", region: str = "uk"):
         self.search_string = search_string
-        self.lookback_days = lookback_days
+        self.period = period
         self.language = language
-        self.country = country
+        self.region = region
 
         # Initialize GoogleNews with get_news functionality
-        self.gn = GoogleNews(lang=language)
+        self.gn = GoogleNews(lang=language, region=region)
 
         logger.info(
-            "Initialized GoogleNewsFetcher with search_string='%s', lookback_days=%d, language='%s', country='%s'",
+            "Initialized GoogleNewsFetcher with search_string='%s', period=%s, language='%s', region='%s'",
             search_string,
-            lookback_days,
+            period,
             language,
-            country,
+            region,
         )
 
     def _is_google_news_url(self, url: str) -> bool:
@@ -54,11 +53,9 @@ class GoogleNewsFetcher:
 
     def _setup_time_range(self) -> None:
         """Set up the time range for Google News search if lookback_days is specified."""
-        if self.lookback_days > 0:
-            since = (datetime.now() - timedelta(days=self.lookback_days)).strftime("%m/%d/%Y")
-            until = datetime.now().strftime("%m/%d/%Y")
-            logger.debug("Setting time range: %s to %s", since, until)
-            self.gn.set_time_range(since, until)
+        if self.period:
+            logger.debug("Setting up time range for Google News: period='%s'", self.period)
+            self.gn.set_period(self.period)
 
     def _fetch_raw_results(self) -> List[Dict[str, Any]]:
         """Fetch raw results from Google News."""

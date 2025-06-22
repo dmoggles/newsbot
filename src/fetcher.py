@@ -1,7 +1,6 @@
 import logging
 import hashlib
 from typing import List
-from datetime import datetime, timedelta
 from GoogleNews import GoogleNews
 from storage import Story
 
@@ -23,28 +22,26 @@ class GoogleNewsFetcher:
             Handles errors gracefully and logs processing details.
     """
 
-    def __init__(self, search_string: str, lookback_days: int = 1, language: str = "en"):
+    def __init__(self, search_string: str, period: str = "1D", language: str = "en"):
         self.search_string = search_string
-        self.lookback_days = lookback_days
+        self.period = period
         self.language = language
         self.gn = GoogleNews(lang=language)
 
         logger.info(
-            "Initialized GoogleNewsFetcher with search_string='%s', lookback_days=%d, language='%s'",
+            "Initialized GoogleNewsFetcher with search_string='%s', period=%s, language='%s'",
             search_string,
-            lookback_days,
+            period,
             language,
         )
 
     def fetch(self) -> List[Story]:
         """Fetch news stories from Google News based on configured parameters."""
-        since = (datetime.now() - timedelta(days=self.lookback_days)).strftime("%m/%d/%Y")
-        until = datetime.now().strftime("%m/%d/%Y")
 
-        logger.info("Fetching news for '%s' from %s to %s", self.search_string, since, until)
+        logger.info("Fetching news for '%s' for period '%s' in language '%s'", self.search_string, self.period, self.language)
 
         try:
-            self.gn.set_time_range(since, until)
+            self.gn.set_period(self.period)
             logger.debug("Set time range for Google News search")
 
             self.gn.search(self.search_string)

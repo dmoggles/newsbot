@@ -1,27 +1,33 @@
 # NewsBot Configuration Example
 
 fetcher:
-  lookback_days: 1
-  search_string: "Chelsea FC"
+  period: "24h"  # Fetch news from the last 24 hours
+  search_string: "chelsea fc"
   language: "en"
+  region: "uk"
 
 filter:
   confirmed_sources:
-    - "BBC News"
-    - "Reuters"
-    - "Chelsea Football Club"
+    - Chelsea FC
+    - Chelsea Football Club
+    - We Ain't Got No History
   accepted_sources:
-    - "The Guardian"
-    - "Sky Sports"
+    - Goal.com
+    - Metro.co.uk
+    - Evening Standard
+    - The Independent
+    - The Guardian
+    - BBC Sport
+    - Football.London
+    - The Athletic
+    - The Telegraph
+    - The Mirror
+    - Sky Sports
+    - Sports Illustrated
   banned_headline_keywords:
-    - "rumor"
-    - "gossip"
-    - "arrest"
+    - "blahblahblah"
   banned_url_keywords:
-    - "clickbait"
-    - "sponsored"
-    - "youtube"
-    - "reddit"
+    - "predicted"
 
 deduplication:
   # Enable semantic deduplication using NLP (experimental, not yet implemented)
@@ -49,7 +55,7 @@ openai:
   temperature: 0.3            # Creativity level (0.0-1.0, lower = more focused)
 
 rate_limit:
-  post_interval_minutes: 30
+  post_interval_minutes: 5
 
 relevance_checker:
   keywords:

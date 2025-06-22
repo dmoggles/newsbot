@@ -28,20 +28,21 @@ Controls how news stories are retrieved from Google News.
 
 ```yaml
 fetcher:
-  lookback_days: 1          # Number of days to look back for news (1-7 recommended)
+  period: '24h' # Look back period
   search_string: "Chelsea FC"  # Search term for Google News
   language: "en"            # Language code (en, es, fr, de, etc.)
+  region: 'uk'
 ```
 
 **Options:**
-- **`lookback_days`** (integer, 1-7): How many days back to search for news stories
-  - Lower values (1-2) for frequent updates
-  - Higher values (3-7) for comprehensive coverage
+- **`period`** (str, '4h'): Specifies look back period for news
 - **`search_string`** (string): The search query sent to Google News
   - Use specific terms for better filtering
   - Enclose phrases in quotes for exact matches
 - **`language`** (string): Two-letter language code
   - Supported: `en`, `es`, `fr`, `de`, `it`, `pt`, etc.
+- **`region`**: (str): Two letter region or country code
+  - Example: `uk`, `us`
 
 ---
 
