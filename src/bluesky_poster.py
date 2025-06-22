@@ -27,6 +27,7 @@ class BlueSkyPoster:
         # Extract rate limiting configuration
         rate_limit_config = config.get("rate_limit", {})
         self.post_interval_minutes = rate_limit_config.get("post_interval_minutes", 30)
+        self.client: Optional[Client] = None
 
         # Initialize BlueSky client
         if self.handle and self.app_password:
