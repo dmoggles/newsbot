@@ -42,6 +42,12 @@ summarizer:
   max_length: 300
   retry_count: 5
 
+# OpenAI configuration (non-sensitive settings)
+openai:
+  model: "gpt-4o-mini"        # GPT model to use for summarization
+  max_tokens: 150             # Maximum tokens per API request
+  temperature: 0.3            # Creativity level (0.0-1.0, lower = more focused)
+
 rate_limit:
   post_interval_minutes: 30
 

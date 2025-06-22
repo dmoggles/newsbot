@@ -67,19 +67,34 @@ def save_stories_to_storage(storage: RedisStorage, processed_stories: List[Story
     return saved_count, updated_count, error_count
 
 
-def setup_logging(level: str) -> None:
-    """Configure logging with the specified level."""
+def setup_logging(level: str, log_to_file: bool = True, log_file: str = "newsbot.log") -> None:
+    """
+    Configure logging with the specified level and optional file output.
+
+    Args:
+        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        log_to_file: Whether to write logs to a file
+        log_file: Path to the log file (used only if log_to_file is True)
+    """
     # Convert string level to logging constant
     numeric_level = getattr(logging, level.upper(), None)
     if not isinstance(numeric_level, int):
-        raise ValueError(f"Invalid log level: {level}")
+        raise ValueError(f"Invalid log level: {level}")  # Create handlers list
+    handlers: List[logging.Handler] = [logging.StreamHandler()]
+
+    if log_to_file:
+        handlers.append(logging.FileHandler(log_file))
 
     logging.basicConfig(
         level=numeric_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.FileHandler("newsbot.log"), logging.StreamHandler()],
+        handlers=handlers,
     )
-    logger.info("Logging configured at %s level", level.upper())
+
+    if log_to_file:
+        logger.info("Logging configured at %s level with file output to %s", level.upper(), log_file)
+    else:
+        logger.info("Logging configured at %s level with console output only", level.upper())
 
 
 def apply_url_decoding(
@@ -193,7 +208,21 @@ def main() -> None:
         return
 
     logger.info("News Aggregator starting up...")
+    try:
+        run_once()
+    except Exception as e:
+        logger.error("An unexpected error occurred: %s", e)
+        logger.exception("Full traceback:")
 
+
+def run_once() -> None:
+    """
+    Run the news aggregation pipeline once.
+    This function is called by the main entry point to execute the entire news aggregation process.
+    It includes fetching news stories, deduplicating, filtering, decoding URLs, scraping articles,
+    summarizing, checking relevance, and posting to BlueSky.
+    It handles all steps in a single run, logging progress and results at each stage.
+    """
     # Load config
     try:
         config = load_config()

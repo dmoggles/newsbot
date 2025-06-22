@@ -26,7 +26,8 @@
 - [x] Implement relevance checker for accepted sources
 - [x] Implement BlueSky poster with post tracking
 - [x] Enforce rate-limiting logic
-- [ ] Add fallback logic for summary and post failures
+- [x] Add fallback logic for summary and post failures
+- [x] Create continuous runner script with configurable intervals and logging options
 - [ ] Implement observability layer using FastAPI with endpoints for:
 - [ ] Summary of all processed news stories
 - [ ] Detailed inspection of individual story processing flow
