@@ -12,5 +12,14 @@
         "**/Thumbs.db": true,
         "**/__pycache__": true
     },
-    "explorerExclude.backup": {}
+    "explorerExclude.backup": {},
+    "pylint.enabled": true,
+    "files.trimTrailingWhitespace": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "black-formatter.args": [
+        "--line-length",
+        "120"
+    ],
+    "python.analysis.extraPaths": ["./stubs"]
 }

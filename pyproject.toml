@@ -20,7 +20,7 @@ beautifulsoup4 = ">=4.12.0,<5.0.0"
 trafilatura = ">=1.12.0,<2.0.0"
 requests = ">=2.32.0,<3.0.0"
 openai = ">=1.88.0,<2.0.0"
-blueskysocial = ">=1.8.0,<2.0.0"
+blueskysocial = ">=1.9.0,<2.0.0"
 
 
 [build-system]
@@ -33,5 +33,11 @@ mypy = "^1.16.1"
 pre-commit = "^4.2.0"
 pytest = "^8.4.1"
 types-pyyaml = "^6.0.12.20250516"
-types-redis = "^4.6.0.20241004"
+isort = "^1.1.0"
+types-requests = "^2.32.4.20250611"
 
+[tool.pylint.master]
+ignore-patterns = ["^.*\\.pyi$"]
+
+[tool.pylint.messages_control]
+disable = ["W0718","missing-module-docstring","line-too-long","too-many-locals","too-few-public-methods","fixme"]

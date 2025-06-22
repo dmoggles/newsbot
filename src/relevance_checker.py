@@ -30,7 +30,7 @@ class RelevanceChecker:
         if not self.keywords:
             logger.warning("No relevance keywords configured - all stories will be considered relevant")
         
-        logger.info(f"Initialized RelevanceChecker with strategy '{self.strategy}' and keywords: {self.keywords}")
+        logger.info("Initialized RelevanceChecker with strategy '%s' and keywords: %s", self.strategy, self.keywords)
         
     def is_relevant(self, story: Story, source_type: str) -> Tuple[bool, str]:
         """
@@ -45,19 +45,19 @@ class RelevanceChecker:
         """
         # Confirmed sources automatically pass relevance checks
         if source_type == "confirmed":
-            logger.debug(f"Story {story.story_id} from confirmed source - skipping relevance check")
+            logger.debug("Story %s from confirmed source - skipping relevance check", story.story_id)
             return True, "Confirmed source - relevance check skipped"
         
         # If no keywords configured, consider everything relevant
         if not self.keywords:
-            logger.debug(f"No relevance keywords configured - story {story.story_id} considered relevant")
+            logger.debug("No relevance keywords configured - story %s considered relevant", story.story_id)
             return True, "No relevance keywords configured"
         
         # Check relevance based on strategy
         if self.strategy == "substring":
             return self._check_substring_relevance(story)
         else:
-            logger.warning(f"Unknown relevance strategy '{self.strategy}' - falling back to substring")
+            logger.warning("Unknown relevance strategy '%s' - falling back to substring", self.strategy)
             return self._check_substring_relevance(story)
     
     def _check_substring_relevance(self, story: Story) -> Tuple[bool, str]:
@@ -74,7 +74,7 @@ class RelevanceChecker:
         text_to_check = story.summary or story.title or ""
         
         if not text_to_check:
-            logger.warning(f"Story {story.story_id} has no summary or title to check relevance")
+            logger.warning("Story %s has no summary or title to check relevance", story.story_id)
             return False, "No text available for relevance checking"
         
         text_lower = text_to_check.lower()
@@ -87,11 +87,11 @@ class RelevanceChecker:
         
         if matched_keywords:
             reason = f"Matched relevance keywords: {', '.join(matched_keywords)}"
-            logger.debug(f"Story {story.story_id} is relevant - {reason}")
+            logger.debug("Story %s is relevant - %s", story.story_id, reason)
             return True, reason
         else:
             reason = f"No relevance keywords found in text. Checked: {', '.join(self.keywords)}"
-            logger.debug(f"Story {story.story_id} is not relevant - {reason}")
+            logger.debug("Story %s is not relevant - %s", story.story_id, reason)
             return False, reason
     
     def check_stories(self, stories: List[Story], source_types: Dict[str, str]) -> Tuple[List[Story], Dict[str, Any]]:
@@ -137,8 +137,9 @@ class RelevanceChecker:
             else:
                 stats["not_relevant"] += 1
         
-        logger.info(f"Relevance check completed: {stats['total']} total, "
-                   f"{stats['relevant']} relevant, {stats['not_relevant']} not relevant, "
-                   f"{stats['confirmed_skipped']} confirmed sources skipped")
+        logger.info(
+            "Relevance check completed: %d total, %d relevant, %d not relevant, %d confirmed sources skipped",
+            stats['total'], stats['relevant'], stats['not_relevant'], stats['confirmed_skipped']
+        )
         
         return processed_stories, stats

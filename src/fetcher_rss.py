@@ -1,118 +1,177 @@
 import logging
 import hashlib
-from typing import List
+from typing import List, Dict, Any
 from datetime import datetime, timedelta
 from GoogleNews import GoogleNews
 from storage import Story
 
 logger = logging.getLogger(__name__)
 
+
 class GoogleNewsFetcher:
+    """
+    GoogleNewsFetcher fetches news stories from Google News using the get_news() method,
+    optionally within a specified lookback period, language, and country.
+    Attributes:
+        search_string (str): The search query to use for fetching news.
+        lookback_days (int): Number of days to look back for news articles.
+        language (str): Language code for news articles (default: "en").
+        country (str): Country code for news articles (default: "US").
+        gn (GoogleNews): Instance of the GoogleNews class for fetching news.
+    Methods:
+        __init__(search_string: str, lookback_days: int = 1, language: str = "en", country: str = "US"):
+            Initializes the fetcher with the given search string, lookback period, language, and country.
+        _is_google_news_url(url: str) -> bool:
+            Checks if a given URL is a Google News redirect URL that may need decoding.
+        fetch() -> List[Story]:
+            Fetches news stories from Google News using the get_news() method, processes the results,
+            and returns a list of Story objects. Google News redirect URLs are detected and stored for
+            later decoding in the pipeline.
+    """
+
     def __init__(self, search_string: str, lookback_days: int = 1, language: str = "en", country: str = "US"):
         self.search_string = search_string
         self.lookback_days = lookback_days
         self.language = language
         self.country = country
-        
+
         # Initialize GoogleNews with get_news functionality
         self.gn = GoogleNews(lang=language)
-        
-        logger.info(f"Initialized GoogleNewsFetcher with search_string='{search_string}', lookback_days={lookback_days}, language='{language}', country='{country}'")
+
+        logger.info(
+            "Initialized GoogleNewsFetcher with search_string='%s', lookback_days=%d, language='%s', country='%s'",
+            search_string,
+            lookback_days,
+            language,
+            country,
+        )
 
     def _is_google_news_url(self, url: str) -> bool:
         """Check if a URL is a Google News redirect URL that needs decoding."""
         if not url:
             return False
-        return 'news.google.com' in url and ('read/CBM' in url or 'articles/CBM' in url or 'articles/CAI' in url)
+        return "news.google.com" in url and ("read/CBM" in url or "articles/CBM" in url or "articles/CAI" in url)
+
+    def _setup_time_range(self) -> None:
+        """Set up the time range for Google News search if lookback_days is specified."""
+        if self.lookback_days > 0:
+            since = (datetime.now() - timedelta(days=self.lookback_days)).strftime("%m/%d/%Y")
+            until = datetime.now().strftime("%m/%d/%Y")
+            logger.debug("Setting time range: %s to %s", since, until)
+            self.gn.set_time_range(since, until)
+
+    def _fetch_raw_results(self) -> List[Dict[str, Any]]:
+        """Fetch raw results from Google News."""
+        logger.debug("Calling GoogleNews.get_news()...")
+        self.gn.get_news(key=self.search_string)
+
+        results = self.gn.results(sort=True)
+        logger.info("Retrieved %d raw results from GoogleNews.get_news()", len(results))
+        return results
+
+    def _process_single_item(self, i: int, item: Dict[str, Any]) -> Story:
+        """Process a single news item into a Story object.
+
+        Args:
+            i: Item index (1-based) for logging purposes
+            item: Raw item dictionary from Google News
+
+        Returns:
+            Story object
+
+        Raises:
+            ValueError: If the item cannot be processed (e.g., missing URL)
+        """
+        title = item.get("title", "")
+        google_news_url = item.get("link", "")
+        date = item.get("date", "")
+        media = item.get("media", "")
+        site = item.get("site", "")
+        desc = item.get("desc", "")
+        reporter = item.get("reporter", "")
+
+        # Use media or site as source
+        source = media or site or ""
+        # Use reporter as byline
+        byline = reporter if reporter else None
+
+        logger.debug("Processing item %d: %s", i, title)
+        logger.debug("  Google News URL: %s", google_news_url)
+        logger.debug("  Source: %s", source)
+
+        if not google_news_url:
+            logger.warning("Item %d: No URL available, skipping", i)
+            raise ValueError("No URL available")
+
+        # Determine URL handling
+        is_google_url = self._is_google_news_url(google_news_url)
+        if is_google_url:
+            logger.debug("  -> Google News URL detected (will decode later)")
+            final_url = google_news_url
+            google_redirect_url = google_news_url
+        else:
+            logger.debug("  -> Direct URL (no decoding needed)")
+            final_url = google_news_url
+            google_redirect_url = None
+
+        # Create stable story ID
+        story_content = f"{title}:{source}".encode("utf-8")
+        story_id = hashlib.md5(story_content).hexdigest()
+
+        # Create Story object
+        story = Story(
+            story_id=story_id,
+            title=title,
+            url=final_url,
+            date=date,
+            source=source,
+            byline=byline,
+            google_redirect_url=google_redirect_url,
+            description=desc,
+        )
+
+        logger.debug("Processed story %d: '%s' from %s (ID: %s...)", i, title, source, story_id[:8])
+        return story
+
+    def _process_all_items(self, results: List[Dict[str, Any]]) -> List[Story]:
+        """Process all news items from Google News results.
+
+        Args:
+            results: List of raw item dictionaries from Google News
+
+        Returns:
+            List of successfully processed Story objects
+        """
+        stories: List[Story] = []
+
+        for i, item in enumerate(results, 1):
+            try:
+                story = self._process_single_item(i, item)
+                stories.append(story)
+            except (ValueError, Exception) as e:
+                logger.warning("Failed to process item %d: %s", i, e)
+                logger.debug("Raw item data: %s", item)
+                continue
+
+        return stories
 
     def fetch(self) -> List[Story]:
         """Fetch news stories from Google News using get_news() and decode redirect URLs."""
-        logger.info(f"Fetching news for '{self.search_string}' using GoogleNews.get_news()")
-        
+        logger.info("Fetching news for '%s' using GoogleNews.get_news()", self.search_string)
+
         try:
-            # Set time range if needed
-            if self.lookback_days > 0:
-                since = (datetime.now() - timedelta(days=self.lookback_days)).strftime("%m/%d/%Y")
-                until = datetime.now().strftime("%m/%d/%Y")
-                logger.debug(f"Setting time range: {since} to {until}")
-                self.gn.set_time_range(since, until)
-            
-            # Use get_news to get Google News URLs (not final destination URLs)
-            logger.debug("Calling GoogleNews.get_news()...")
-            self.gn.get_news(key=self.search_string)
-            
-            # Get results
-            results = self.gn.results(sort=True)
-            logger.info(f"Retrieved {len(results)} raw results from GoogleNews.get_news()")
-            
-            stories = []
-            
-            for i, item in enumerate(results, 1):
-                try:
-                    title = item.get("title", "")
-                    google_news_url = item.get("link", "")  # This should be a Google News URL
-                    date = item.get("date", "")
-                    media = item.get("media", "")  # Source from GoogleNews
-                    site = item.get("site", "")    # Alternative source field
-                    desc = item.get("desc", "")    # Description
-                    reporter = item.get("reporter", "")  # Reporter/byline
-                    
-                    # Use media or site as source
-                    source = media or site or ""
-                    
-                    # Use reporter as byline
-                    byline = reporter if reporter else None
-                    
-                    logger.debug(f"Processing item {i}: {title}")
-                    logger.debug(f"  Google News URL: {google_news_url}")
-                    logger.debug(f"  Source: {source}")
-                    
-                    # Check if we got a Google News URL but don't decode it yet
-                    # URL decoding will be done later in the pipeline after filtering
-                    is_google_url = self._is_google_news_url(google_news_url)
-                    
-                    if not google_news_url:
-                        logger.warning(f"Item {i}: No URL available, skipping")
-                        continue
-                    
-                    if is_google_url:
-                        logger.debug("  -> Google News URL detected (will decode later)")
-                        # Store the Google News URL as the main URL for now
-                        final_url = google_news_url
-                        google_redirect_url = google_news_url
-                    else:
-                        logger.debug("  -> Direct URL (no decoding needed)")
-                        final_url = google_news_url
-                        google_redirect_url = None
-                    
-                    # Create a stable story_id based on title and source
-                    story_content = f"{title}:{source}".encode('utf-8')
-                    story_id = hashlib.md5(story_content).hexdigest()
-                    
-                    # Create Story object
-                    story = Story(
-                        story_id=story_id,
-                        title=title,
-                        url=final_url,  # Store the URL (will be Google News URL or direct URL)
-                        date=date,
-                        source=source,
-                        byline=byline,
-                        google_redirect_url=google_redirect_url,  # Store Google redirect URL if present
-                        description=desc
-                    )
-                    
-                    stories.append(story)
-                    
-                    logger.debug(f"Processed story {i}: '{title}' from {source} (ID: {story_id[:8]}...)")
-                    
-                except Exception as e:
-                    logger.warning(f"Failed to process item {i}: {e}")
-                    logger.debug(f"Raw item data: {item}")
-                    continue
-            
-            logger.info(f"Successfully processed {len(stories)} stories from GoogleNews.get_news()")
+            # Setup time range
+            self._setup_time_range()
+
+            # Fetch raw results from Google News
+            results = self._fetch_raw_results()
+
+            # Process all items into Story objects
+            stories = self._process_all_items(results)
+
+            logger.info("Successfully processed %d stories from GoogleNews.get_news()", len(stories))
             return stories
-            
+
         except Exception as e:
-            logger.error(f"Error during Google News fetch with get_news(): {e}")
+            logger.error("Error during Google News fetch with get_news(): %s", e)
             raise

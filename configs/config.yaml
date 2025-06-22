@@ -12,6 +12,7 @@ filter:
     - "Chelsea Football Club"
   accepted_sources:
     - "The Guardian"
+    - "Sky Sports"
   banned_headline_keywords:
     - "rumor"
     - "gossip"
@@ -39,10 +40,10 @@ scraper:
 
 summarizer:
   max_length: 300
-  retry_count: 2
+  retry_count: 5
 
 rate_limit:
-  post_interval_minutes: 30
+  post_interval_minutes: 0
 
 relevance_checker:
   keywords:

@@ -1,0 +1,6 @@
+from typing import Any
+from newspaper import Config
+
+class ContentExtractor:
+    def __init__(self, config: Config) -> None: ...
+    def get_text(self, doc: Any) -> str: ...

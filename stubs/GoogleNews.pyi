@@ -1,0 +1,16 @@
+from typing import Optional, List, Dict, Any
+
+class GoogleNews:
+    def __init__(
+        self,
+        lang: str = "en",
+        period: str = "",
+        start: str = "",
+        end: str = "",
+        encode: str = "utf-8",
+        region: Optional[str] = None,
+    ) -> None: ...
+    def results(self, sort: bool = False) -> List[Dict[str, Any]]: ...
+    def set_time_range(self, start: str, end: str) -> None: ...
+    def search(self, query: str) -> None: ...
+    def get_news(self, key: str, deamplify: Optional[bool] = False) -> None: ...

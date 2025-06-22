@@ -2,51 +2,71 @@ import logging
 import hashlib
 from typing import List
 from datetime import datetime, timedelta
-from GoogleNews import GoogleNews  # Fixed import casing
+from GoogleNews import GoogleNews
 from storage import Story
 
 logger = logging.getLogger(__name__)
 
+
 class GoogleNewsFetcher:
+    """
+    GoogleNewsFetcher fetches news stories from Google News based on a search string, lookback period, and language.
+    Attributes:
+        search_string (str): The search query to use for fetching news.
+        lookback_days (int): Number of days to look back for news stories (default is 1).
+        language (str): Language code for the news search (default is "en").
+        gn (GoogleNews): Instance of the GoogleNews client for performing searches.
+    Methods:
+        fetch() -> List[Story]:
+            Fetches news stories from Google News within the specified time range and search parameters.
+            Returns a list of Story objects, each containing the story ID, title, URL, date, source, and byline.
+            Handles errors gracefully and logs processing details.
+    """
+
     def __init__(self, search_string: str, lookback_days: int = 1, language: str = "en"):
         self.search_string = search_string
         self.lookback_days = lookback_days
         self.language = language
         self.gn = GoogleNews(lang=language)
-        
-        logger.info(f"Initialized GoogleNewsFetcher with search_string='{search_string}', lookback_days={lookback_days}, language='{language}'")
+
+        logger.info(
+            "Initialized GoogleNewsFetcher with search_string='%s', lookback_days=%d, language='%s'",
+            search_string,
+            lookback_days,
+            language,
+        )
 
     def fetch(self) -> List[Story]:
         """Fetch news stories from Google News based on configured parameters."""
         since = (datetime.now() - timedelta(days=self.lookback_days)).strftime("%m/%d/%Y")
         until = datetime.now().strftime("%m/%d/%Y")
-        
-        logger.info(f"Fetching news for '{self.search_string}' from {since} to {until}")
-        
+
+        logger.info("Fetching news for '%s' from %s to %s", self.search_string, since, until)
+
         try:
-            self.gn.set_time_range(since, until)  # type: ignore
+            self.gn.set_time_range(since, until)
             logger.debug("Set time range for Google News search")
-            
-            self.gn.search(self.search_string)  # type: ignore
-            logger.debug(f"Executed search for '{self.search_string}'")
-            
-            results = self.gn.results(sort=True)  # type: ignore
-            logger.info(f"Retrieved {len(results)} raw results from Google News")
-            
-            stories = []
+
+            self.gn.search(self.search_string)
+            logger.debug("Executed search for '%s'", self.search_string)
+
+            results = self.gn.results(sort=True)
+            logger.info("Retrieved %d raw results from Google News", len(results))
+
+            stories: List[Story] = []
             for i, item in enumerate(results, 1):
                 try:
-                    title = item.get("title", "")  # type: ignore
-                    url = item.get("link", "")  # type: ignore
-                    date = item.get("date", "")  # type: ignore
-                    source = item.get("media", "")  # type: ignore
-                    byline = item.get("desc", None)  # type: ignore
-                    
+                    title = item.get("title", "")
+                    url = item.get("link", "")
+                    date = item.get("date", "")
+                    source = item.get("media", "")
+                    byline = item.get("desc", None)
+
                     # Create a stable story_id based on title and source
                     # This avoids issues with changing Google redirect URLs
-                    story_content = f"{title}:{source}".encode('utf-8')
+                    story_content = f"{title}:{source}".encode("utf-8")
                     story_id = hashlib.md5(story_content).hexdigest()
-                    
+
                     story = Story(
                         story_id=story_id,
                         title=title,
@@ -56,17 +76,17 @@ class GoogleNewsFetcher:
                         byline=byline,
                     )
                     stories.append(story)
-                    
-                    logger.debug(f"Processed story {i}: '{title}' from {source} (ID: {story_id[:8]}...)")
-                    
+
+                    logger.debug("Processed story %d: '%s' from %s (ID: %s...)", i, title, source, story_id[:8])
+
                 except Exception as e:
-                    logger.warning(f"Failed to process story {i}: {e}")
-                    logger.debug(f"Raw story data: {item}")
+                    logger.warning("Failed to process story %d: %s", i, e)
+                    logger.debug("Raw story data: %s", item)
                     continue
-            
-            logger.info(f"Successfully processed {len(stories)} stories out of {len(results)} raw results")
+
+            logger.info("Successfully processed %d stories out of %d raw results", len(stories), len(results))
             return stories
-            
+
         except Exception as e:
-            logger.error(f"Error during Google News fetch: {e}")
+            logger.error("Error during Google News fetch: %s", e)
             raise
